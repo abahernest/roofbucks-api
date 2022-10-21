@@ -11,3 +11,5 @@ RUN ls .
 COPY . .
 
 CMD pip install -r requirements.txt
+
+CMD python manage.py migrate
