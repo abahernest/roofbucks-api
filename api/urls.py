@@ -13,9 +13,13 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
+from django.http import JsonResponse
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('', lambda request: JsonResponse("Hello World from roofbucks-api", safe=False)),
+
+    path('api/v1/auth/', include('authentication.urls')),
+    path('api/v1/user/', include('users.urls')),
+
 ]

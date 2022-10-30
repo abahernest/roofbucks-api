@@ -9,6 +9,10 @@ djangorestframework = "*"
 gunicorn = "*"
 dj-database-url = "*"
 psycopg2 = "*"
+django-cors-headers = "*"
+python-dotenv = "*"
+argon2-cffi = "*"
+djangorestframework-simplejwt = "*"
 
 [dev-packages]
 
