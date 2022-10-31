@@ -1,9 +1,11 @@
+from django.utils import timezone
 import re
 from rest_framework import serializers
 from django.contrib import auth
-from rest_framework.exceptions import AuthenticationFailed
+from rest_framework.exceptions import AuthenticationFailed, ParseError
 
 from users.models import User
+from .models import EmailVerification
 
 class SignupSerializer (serializers.ModelSerializer):
     password    = serializers.CharField(min_length=8, max_length=68,write_only=True)
@@ -46,6 +48,46 @@ class SignupSerializer (serializers.ModelSerializer):
         return User.objects.create_user(**validated_data)
 
 
+class EmailVerificationSerializer(serializers.ModelSerializer):
+    token = serializers.CharField(max_length=6, min_length=6, write_only=True)
+    email = serializers.EmailField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = ['token', 'email']
+
+    def validate(self,attrs):
+        email = attrs.get('email', '')
+        token = attrs.get('token', '')
+
+        users = User.objects.filter(email=email)
+        if len(users) <= 0:
+            raise ParseError('User not found')
+        
+        user = users[0]
+        verificationObj = EmailVerification.objects.filter(user=user)
+
+        if len(verificationObj) <= 0:
+            raise ParseError('User not found')
+            
+        verificationObj = verificationObj[0]
+        if verificationObj.token != token:
+            raise ParseError('Wrong Token')
+
+        if verificationObj.is_verified:
+            raise ParseError('Token Expired')
+
+        if verificationObj.token_expiry < timezone.now():
+            raise ParseError('Token Expired')
+
+        verificationObj.is_verified=True
+        verificationObj.token_expiry=timezone.now()
+        verificationObj.save()
+        user.is_verified=True
+        user.save()
+
+        return True
+            
 
 class LoginSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(max_length=255, min_length=3)
@@ -55,11 +97,13 @@ class LoginSerializer(serializers.ModelSerializer):
         max_length=255, min_length=3, read_only=True)
     lastname = serializers.CharField(
         max_length=255, min_length=3, read_only=True)
+    role = serializers.CharField(
+        max_length=255, min_length=3, read_only=True)
 
 
     class Meta:
         model = User
-        fields = ['email', 'password', 'tokens', 'firstname', 'lastname']
+        fields = ['email', 'password', 'tokens', 'firstname', 'lastname', 'role']
 
     def validate(self, attrs):
         email = attrs.get('email', '')
@@ -71,10 +115,13 @@ class LoginSerializer(serializers.ModelSerializer):
             raise AuthenticationFailed('Invalid credentials, try again')
         if not user.is_active:
             raise AuthenticationFailed('Account disabled, contact admin')
+        if not user.is_verified:
+            raise AuthenticationFailed('Please verify your email')
 
         return {
             'email': user.email,
             'firstname': user.firstname,
             'lastname': user.lastname,
+            'role': user.role,
             'tokens': user.tokens
         }

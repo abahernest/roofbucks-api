@@ -1,3 +1,5 @@
+from datetime import timedelta
+from django.utils import timezone
 from rest_framework import generics, status, views, permissions
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -5,7 +7,9 @@ from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse
 
 from users.models import User
-from .serializers import SignupSerializer, LoginSerializer
+from .models import EmailVerification
+from .serializers import EmailVerificationSerializer, SignupSerializer, LoginSerializer
+from utils.email import SendMail
 
 class SignupView(generics.GenericAPIView):
 
@@ -20,15 +24,22 @@ class SignupView(generics.GenericAPIView):
         if len(users) > 0 :
             return Response({
                 "message": "User already exists",
-            }, 400)
+            }, status.HTTP_400_BAD_REQUEST)
 
         # pesist user in db
         user = serializer.save()
         
         user_data = serializer.data
 
-        # generate jwt
-        user_data["token"] = str(RefreshToken.for_user(user).access_token)
+        # generate email verification token
+        token = User.objects.make_random_password(length=6, allowed_chars='0123456789')
+        token_expiry = timezone.now() + timedelta(minutes=6)
+
+        EmailVerification.objects.create(user=user, token=token, token_expiry=token_expiry)
+
+        # Send Mail
+        data = {"token":token, "firstname": user.firstname, 'to_email': user.email}
+        SendMail.send_email_verification_mail(data)
 
         return Response(user_data, status=status.HTTP_201_CREATED)
 
@@ -39,3 +50,12 @@ class LoginView(generics.GenericAPIView):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class VerifyEmail(generics.GenericAPIView):
+    serializer_class = EmailVerificationSerializer
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return Response({"message": "successful"}, status=status.HTTP_200_OK)
