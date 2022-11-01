@@ -53,7 +53,7 @@ class SignupView(generics.GenericAPIView):
         data = {"token":token, "firstname": user.firstname, 'to_email': user.email}
         SendMail.send_email_verification_mail(data)
 
-        return Response(user_data, status=status.HTTP_201_CREATED)
+        return Response({"message": "Registration successful. Check email for verification code"}, status=status.HTTP_201_CREATED)
 
 class LoginView(generics.GenericAPIView):
     serializer_class = LoginSerializer
