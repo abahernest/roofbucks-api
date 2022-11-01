@@ -1,4 +1,6 @@
 from django.core.mail import EmailMessage
+from django.contrib.sites.shortcuts import  get_current_site
+from django.urls import reverse
 
 
 import threading
@@ -26,4 +28,21 @@ class SendMail:
         message = f'Hello {data["firstname"]},\nYour securely generated token is avalable below.\n\n{data["token"]}'
         data['email_body'] = message
         data['email_subject']= 'Verify Your Email'
+        SendMail.send_email(data)
+
+    @staticmethod
+    def send_password_reset_mail(data, request):
+
+        current_site = get_current_site(request=request).domain
+
+        # construct url
+        relativeLink = reverse(
+            'password-reset-confirm', kwargs={'uid64': data["uid64"], 'token': data["token"]})
+
+        # redirect_url = request.data.get('redirect_url', '')
+        absurl = 'http://'+current_site + relativeLink
+
+        email_body = 'Hello, \n Use link below to reset your password  \n' + absurl
+        data = {'email_body': email_body, 'to_email': data["email"],
+                'email_subject': 'Reset your passsword'}
         SendMail.send_email(data)

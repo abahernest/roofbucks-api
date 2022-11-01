@@ -2,9 +2,13 @@ from django.utils import timezone
 import re
 from rest_framework import serializers
 from django.contrib import auth
-from rest_framework.exceptions import AuthenticationFailed, ParseError
+from rest_framework.exceptions import AuthenticationFailed, ParseError, server_error
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.utils.encoding import force_str, smart_str, smart_bytes, DjangoUnicodeDecodeError
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
 from users.models import User
+from utils.email import SendMail
 from .models import EmailVerification
 
 class SignupSerializer (serializers.ModelSerializer):
@@ -125,3 +129,83 @@ class LoginSerializer(serializers.ModelSerializer):
             'role': user.role,
             'tokens': user.tokens
         }
+
+
+class RequestPasswordResetEmailSerializer(serializers.Serializer):
+    email = serializers.EmailField(min_length=2)
+    token = serializers.CharField(min_length=1, read_only=True)
+    uid64 = serializers.CharField(min_length=1, read_only=True)
+
+    redirect_url = serializers.CharField(max_length=500, required=False)
+
+    class Meta:
+        fields = ['email','uid64', 'token']
+
+    def validate(self, attrs):
+        email = attrs.get('email','')
+        users = User.objects.filter(email=email)
+        
+        if len(users) <=0:
+            # if user account not found, don't throw error
+            return False
+
+        user = users[0]
+
+        # encode userId as base64 uuid
+        uid64 = urlsafe_base64_encode(smart_bytes(user.id))
+
+        # generate reset token
+        token = PasswordResetTokenGenerator().make_token(user)
+
+        return {"uid64": uid64, "token": token, "email": user.email}
+
+
+class SetNewPasswordSerializer(serializers.Serializer):
+    password = serializers.CharField(
+        min_length=6, max_length=68, write_only=True)
+    token = serializers.CharField(
+        min_length=1, write_only=True)
+    uid64 = serializers.CharField(
+        min_length=1, write_only=True)
+
+    class Meta:
+        fields = ['password', 'token', 'uid64']
+
+    def validate(self, attrs):
+        
+        password = attrs.get('password')
+        token = attrs.get('token')
+        uid64 = attrs.get('uid64')
+
+        # Decode base64 string
+        try: 
+            id = force_str(urlsafe_base64_decode(uid64))
+            user = User.objects.get(id=id)
+            if not PasswordResetTokenGenerator().check_token(user, token):
+                raise AuthenticationFailed('The reset link is invalid', 401)
+        except Exception as e:
+            raise AuthenticationFailed('The reset link is invalid', 401)
+
+        # Validate password
+
+        if re.search('[A-Z]', password) is None:
+            raise serializers.ValidationError(
+                "Password must contain One Uppercase Alphabet")
+
+        if re.search('[a-z]', password) is None:
+            raise serializers.ValidationError(
+                "Password must contain One Lowercase Alphabet")
+
+        if re.search('[0-9]', password) is None:
+            raise serializers.ValidationError(
+                "Password must contain One Numeric Character")
+
+        if re.search(r"[@$!%*#?&]", password) is None:
+            raise serializers.ValidationError(
+                "Password must contain One Special Character")
+
+        # Update password
+        user.set_password(password)
+        user.save()
+
+        return (user)
