@@ -9,7 +9,8 @@ from django.urls import reverse
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.encoding import smart_bytes, smart_str, DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
-from django.http import HttpResponsePermanentRedirect
+from django.http import HttpResponsePermanentRedirect, HttpResponse
+from django.db import transaction
 
 from users.models import User
 from .models import EmailVerification
@@ -38,20 +39,21 @@ class SignupView(generics.GenericAPIView):
                 "message": "User already exists",
             }, status.HTTP_400_BAD_REQUEST)
 
-        # pesist user in db
-        user = serializer.save()
-        
-        user_data = serializer.data
+        with transaction.atomic():
+            # pesist user in db
+            user = serializer.save()
+            
+            user_data = serializer.data
 
-        # generate email verification token
-        token = User.objects.make_random_password(length=6, allowed_chars='0123456789')
-        token_expiry = timezone.now() + timedelta(minutes=6)
+            # generate email verification token
+            token = User.objects.make_random_password(length=6, allowed_chars='0123456789')
+            token_expiry = timezone.now() + timedelta(minutes=6)
 
-        EmailVerification.objects.create(user=user, token=token, token_expiry=token_expiry)
+            EmailVerification.objects.create(user=user, token=token, token_expiry=token_expiry)
 
-        # Send Mail
-        data = {"token":token, "firstname": user.firstname, 'to_email': user.email}
-        SendMail.send_email_verification_mail(data)
+            # Send Mail
+            data = {"token":token, "firstname": user.firstname, 'to_email': user.email}
+            SendMail.send_email_verification_mail(data)
 
         return Response({"message": "Registration successful. Check email for verification code"}, status=status.HTTP_201_CREATED)
 
@@ -98,15 +100,18 @@ class PasswordTokenCheckAPI(generics.GenericAPIView):
 
     def get(self, request, uid64, token):
         try:
+            redirect_url = os.environ.get('PASSWORD_RESET_REDIRECT_URL', '')
             user_id = smart_str(urlsafe_base64_decode(uid64))
             user = User.objects.get(id=user_id)
-
+            
             if not PasswordResetTokenGenerator().check_token(user, token):
-                return Response({'message': 'Invalid Token'}, status=401)
+                return HttpResponse('<p>Invalid Token. Request a new one</p>', status=400)
 
-            return Response({'uid64': uid64, 'token': token}, status=200)
+            if redirect_url and len(redirect_url) > 3:
+                return CustomRedirect(redirect_url+f'&token_valid=True&uid64={uid64}&token={token}')
+            return HttpResponse('<p>Contact Admin. Page Not found</p>', status=400)
         except Exception as e:
-            return Response({'message': 'Invalid Token'}, status=401)
+            return HttpResponse('<p>Invalid Token. Request a new one</p>', status=400)
 
 
 class SetNewPasswordAPIView(generics.GenericAPIView):
