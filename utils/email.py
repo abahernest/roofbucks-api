@@ -1,8 +1,8 @@
 from django.core.mail import EmailMessage
 from django.contrib.sites.shortcuts import  get_current_site
 from django.urls import reverse
-
-
+from mailjet_rest import Client
+import os
 import threading
 
 
@@ -17,6 +17,12 @@ class EmailThread(threading.Thread):
 
 
 class SendMail:
+    API_KEY = os.environ.get("MAILJET_PUBLIC_KEY")
+    SECRET_KEY = os.environ.get("MAILJET_PRIVATE_KEY")
+    
+    def initialize(self):
+        mailjet = Client(auth=(self.API_KEY, self.SECRET_KEY))
+        
     @staticmethod
     def send_email(data):
         email = EmailMessage(

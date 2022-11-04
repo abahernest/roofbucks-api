@@ -13,6 +13,7 @@ django-cors-headers = "*"
 python-dotenv = "*"
 argon2-cffi = "*"
 djangorestframework-simplejwt = "*"
+mailjet-rest = "*"
 
 [dev-packages]
 
