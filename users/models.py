@@ -39,7 +39,17 @@ IDENTITY_DOCUMENT_CHOICES = [
             ("DRIVERS_LICENSE","Drivers License"),
             ("PASSPORT", "Passport")
             ]
-            
+
+
+def front_identity_document_path_name(instance, filename):
+    dir_name = instance.id
+    return 'identity_document/%s/front/%s' % (dir_name,filename)
+
+
+def back_identity_document_path_name(instance, filename):
+    dir_name = instance.id
+    return 'identity_document/%s/back/%s' % (dir_name,filename)
+
 class User(AbstractBaseUser, PermissionsMixin):
     phone                       = models.CharField(max_length=255, unique=True, null=True, blank=True)
     firstname                   = models.CharField(max_length=255)
@@ -72,9 +82,14 @@ class User(AbstractBaseUser, PermissionsMixin):
         choices= IDENTITY_DOCUMENT_CHOICES,
         default= IDENTITY_DOCUMENT_CHOICES[0][0]
     )
-    identity_document_url       = ArrayField(models.URLField(), default=list)
-    display_photo               = models.URLField()
-    proof_of_address_document   = models.URLField()
+    identity_document_front = models.FileField(
+        upload_to= front_identity_document_path_name, null=True)
+    identity_document_back = models.FileField(
+        upload_to= back_identity_document_path_name, null=True)
+    identity_document_number    = models.CharField(max_length=65, null=True)
+    identity_document_expiry_date   = models.DateField(null=True)
+    display_photo               = models.ImageField(upload_to='display_photo/')
+    proof_of_address_document   = models.FileField(upload_to='proof_of_address/')
     created_at                  = models.DateTimeField(auto_now_add=True)
     updated_at                  = models.DateTimeField(auto_now=True)
 
