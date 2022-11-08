@@ -1,7 +1,7 @@
 import os
 from datetime import timedelta
 from django.utils import timezone
-from rest_framework import generics, status, views, permissions
+from rest_framework import generics, status, views, permissions, parsers
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.sites.shortcuts import get_current_site
@@ -13,14 +13,15 @@ from django.http import HttpResponsePermanentRedirect, HttpResponse
 from django.db import transaction
 
 from users.models import User
-from .models import EmailVerification
+from .models import EmailVerification, CompanyVerification
 from .serializers import (
     EmailVerificationSerializer,
     RequestPasswordResetEmailSerializer, 
     SignupSerializer, 
     LoginSerializer, 
     RequestPasswordResetEmailSerializer,
-    SetNewPasswordSerializer
+    SetNewPasswordSerializer,
+    CompanyVerificationSerializer,
     )
 from utils.email import SendMail
 
@@ -121,3 +122,23 @@ class SetNewPasswordAPIView(generics.GenericAPIView):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         return Response({'message': 'Password reset successful'}, status=status.HTTP_200_OK)
+
+
+
+class VerifyCompanyAPIView(views.APIView):
+
+    serializer_class = CompanyVerificationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self,request):
+
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        reg_objects = CompanyVerification.objects.filter(user=request.user)
+        if len(reg_objects)>=1:
+            return Response({'error':['company already verified']}, status=400)
+            
+        CompanyVerification.objects.create(**serializer.validated_data, user= request.user)
+
+        return Response(serializer.validated_data, status=200)

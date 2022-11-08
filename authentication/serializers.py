@@ -9,7 +9,8 @@ from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
 from users.models import User
 from utils.email import SendMail
-from .models import EmailVerification
+from utils.identity_verification import VerifyCompany
+from .models import EmailVerification, CompanyVerification
 
 class SignupSerializer (serializers.ModelSerializer):
     password    = serializers.CharField(min_length=8, max_length=68,write_only=True)
@@ -209,3 +210,40 @@ class SetNewPasswordSerializer(serializers.Serializer):
         user.save()
 
         return (user)
+
+
+class CompanyVerificationSerializer(serializers.ModelSerializer):
+    registration_number = serializers.CharField(min_length=4, max_length=65)
+    reference_number = serializers.CharField(read_only=True)
+    registered_company_name = serializers.CharField(read_only=True)
+
+
+    class Meta:
+        model = CompanyVerification
+        fields = ['registration_number',
+                  'reference_number', 'registered_company_name', 'user_id']
+
+    def validate(self, attrs):
+        reg_number = attrs.get('registration_number')
+
+        reg_objects = CompanyVerification.objects.filter(registration_number=reg_number)
+
+        if len(reg_objects) >=1:
+            raise serializers.ValidationError('registration number already in use')
+
+        verified_company_name = VerifyCompany.verify_cac_number(reg_number)
+
+        if not verified_company_name:
+            raise serializers.ValidationError('Invalid/Incorrect registration number')
+
+
+        ## generate reference number for verification
+        allowed_chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+        reference_number = User.objects.make_random_password(
+            length=12, allowed_chars=allowed_chars)
+
+        return {
+            'registration_number': reg_number, 
+            'reference_number': reference_number, 
+            'registered_company_name': verified_company_name,
+            }
