@@ -8,9 +8,9 @@ from django.utils.encoding import force_str, smart_str, smart_bytes, DjangoUnico
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
 from users.models import User
-from utils.email import SendMail
 from utils.identity_verification import VerifyCompany
-from .models import EmailVerification, CompanyVerification
+from .models import EmailVerification
+from users.models import Company
 
 class SignupSerializer (serializers.ModelSerializer):
     password    = serializers.CharField(min_length=8, max_length=68,write_only=True)
@@ -47,7 +47,6 @@ class SignupSerializer (serializers.ModelSerializer):
             raise serializers.ValidationError("Password must contain One Special Character")
 
         return attrs
-
 
     def create(self, validated_data):
         return User.objects.create_user(**validated_data)
@@ -214,28 +213,34 @@ class SetNewPasswordSerializer(serializers.Serializer):
 
 class CompanyVerificationSerializer(serializers.ModelSerializer):
     registration_number = serializers.CharField(min_length=4, max_length=65)
+    company_name = serializers.CharField(min_length=2, write_only=True)
     reference_number = serializers.CharField(read_only=True)
-    registered_company_name = serializers.CharField(read_only=True)
+    registered_name = serializers.CharField(read_only=True)
 
 
     class Meta:
-        model = CompanyVerification
+        model = Company
         fields = ['registration_number',
-                  'reference_number', 'registered_company_name', 'user_id']
+                  'reference_number', 'registered_name', 'user_id', 'company_name']
 
     def validate(self, attrs):
         reg_number = attrs.get('registration_number')
+        company_name = attrs.get('company_name')
 
-        reg_objects = CompanyVerification.objects.filter(registration_number=reg_number)
+        reg_objects = Company.objects.filter(registration_number=reg_number)
 
         if len(reg_objects) >=1:
             raise serializers.ValidationError('registration number already in use')
 
         verified_company_name = VerifyCompany.verify_cac_number(reg_number)
 
-        if not verified_company_name:
+        if len(verified_company_name) == 0:
             raise serializers.ValidationError('Invalid/Incorrect registration number')
 
+        is_similar_name = VerifyCompany.isSimilarCompanyName(verified_company_name, company_name)
+
+        if not is_similar_name:
+            raise serializers.ValidationError('Company name doesn\'t match credentials')
 
         ## generate reference number for verification
         allowed_chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
@@ -245,5 +250,6 @@ class CompanyVerificationSerializer(serializers.ModelSerializer):
         return {
             'registration_number': reg_number, 
             'reference_number': reference_number, 
-            'registered_company_name': verified_company_name,
+            'registered_name': verified_company_name,
             }
+

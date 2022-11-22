@@ -1,4 +1,5 @@
 import os
+from difflib import SequenceMatcher
 
 class VerifyCompany:
 
@@ -13,6 +14,13 @@ class VerifyCompany:
     def verify_cac_number(reg_number):
         
         if 'sample' in reg_number:
-            return 'XXX SAMPLE COMPANY ORG XXX'
+            return 'SAMPLE COMPANY'
         
-        return
+        return ""
+
+    @staticmethod
+    def isSimilarCompanyName(a, b):
+        a= a.lower()
+        b= b.lower()
+        ratio = SequenceMatcher(None, a, b).ratio()
+        return ratio >= 0.9

@@ -13,7 +13,8 @@ from django.http import HttpResponsePermanentRedirect, HttpResponse
 from django.db import transaction
 
 from users.models import User
-from .models import EmailVerification, CompanyVerification
+from .models import EmailVerification
+from users.models import Company
 from .serializers import (
     EmailVerificationSerializer,
     RequestPasswordResetEmailSerializer, 
@@ -132,13 +133,17 @@ class VerifyCompanyAPIView(views.APIView):
 
     def post(self,request):
 
+        reg_objects = Company.objects.filter(user=request.user)
+        if len(reg_objects)>=1 and reg_objects[0].is_verified:
+            return Response({
+                'registration_number': reg_objects[0].registration_number,
+                'reference_number': reg_objects[0].reference_number,
+                'registered_name': reg_objects[0].registered_name,
+            }, status=200)
+
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
-
-        reg_objects = CompanyVerification.objects.filter(user=request.user)
-        if len(reg_objects)>=1:
-            return Response({'error':['company already verified']}, status=400)
             
-        CompanyVerification.objects.create(**serializer.validated_data, user= request.user)
+        Company.objects.create(**serializer.validated_data, user= request.user, is_verified= True)
 
         return Response(serializer.validated_data, status=200)

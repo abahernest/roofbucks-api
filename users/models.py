@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.postgres.fields import ArrayField
 from django.contrib.auth.models import AbstractBaseUser,BaseUserManager,PermissionsMixin
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.core.validators import MinLengthValidator
 
 class UserManager(BaseUserManager):
 
@@ -63,7 +64,6 @@ class User(AbstractBaseUser, PermissionsMixin):
         null=False, default=AUTH_PROVIDERS.get('email'))
 
     nationality                 = models.CharField(max_length=255)
-    agency                      = models.CharField(max_length=255)
     title                       = models.CharField(max_length=255)
     summary                     = models.TextField(default="")
 
@@ -109,3 +109,26 @@ class User(AbstractBaseUser, PermissionsMixin):
         }
     class Meta:
         db_table = "Users"
+
+
+class Company(models.Model):
+    is_verified                 = models.BooleanField(default=False)
+    user                        = models.OneToOneField(to=User, on_delete=models.CASCADE)
+    registration_number         = models.CharField(null=False, blank=False, max_length=65, validators=[MinLengthValidator(4)], unique=True)
+    reference_number            = models.CharField(null=False, blank=False, max_length=12, validators=[MinLengthValidator(12)], unique=True)
+    registered_name             = models.CharField(null=False, blank=False,max_length=500, unique=True)
+    email                       = models.EmailField(max_length=255, unique=True, null=True, blank=True)
+    phone                       = models.CharField(max_length=255, unique=True, null=True, blank=True)
+    display_name                = models.CharField(max_length=255)
+    website                     = models.CharField(max_length=255)
+    city                        = models.CharField(max_length=255)
+    country                     = models.CharField(max_length=255)
+    description                 = models.TextField()
+    company_logo                = models.ImageField(upload_to='company_logo/')
+    certificate_of_incorporation   = models.FileField(upload_to='certificate_of_incorporation/')
+    bank_information            = ArrayField(models.JSONField(default=dict), default= list)
+    created_at                  = models.DateTimeField(auto_now_add=True)
+    updated_at                  = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'Company'
