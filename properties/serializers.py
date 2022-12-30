@@ -132,3 +132,23 @@ class NewPropertySerializer (serializers.ModelSerializer):
             document_album=document_album)
 
         return property
+
+
+class StayPeriodSerializer (serializers.Serializer):
+
+    stay_periods = serializers.ListField(
+        child=serializers.ListField(
+            child= serializers.DateField()
+        ),
+        write_only=True,
+        min_length=1
+    )
+
+    def update(self, instance, validated_data):
+        
+        scheduled_stays = validated_data.get('stay_periods')
+
+        instance.scheduled_stays+=scheduled_stays
+        instance.save()
+
+        return instance
