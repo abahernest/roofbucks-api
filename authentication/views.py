@@ -48,7 +48,7 @@ class SignupView(generics.GenericAPIView):
             user_data = serializer.data
 
             # generate email verification token
-            token = User.objects.make_random_password(length=6, allowed_chars='0123456789')
+            token = User.objects.make_random_password(length=6, allowed_chars=f'0123456789')
             token_expiry = timezone.now() + timedelta(minutes=6)
 
             EmailVerification.objects.create(user=user, token=token, token_expiry=token_expiry)
