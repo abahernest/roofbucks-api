@@ -137,19 +137,12 @@ class NewPropertySerializer (serializers.ModelSerializer):
 
         return property
 
-    def update(self, instance, validated_data):
+    def manual_update(instance, validated_data):
 
         ## count existing images and documents for this property
-        property_media_files = MediaFiles.objects.filter(album=instance.id)
-        total_images_uploaded, total_documents_uploaded = 0, 0
+        total_images_uploaded, total_documents_uploaded = len(instance.get_images()), len(instance.get_documents())
 
-        for file in property_media_files:
-            if file.media_type == 'IMAGE':
-                total_images_uploaded+=1
-            elif file.media_type == 'DOCUMENT':
-                total_document_uploaded+=1
-
-
+        updatable_fields = {}
         for key  in validated_data:
             if key in ['agent', 'image_album', 'document_album', 'moderation_status', 'archived']:
                 return ParseError('Attempting to change Fixed Values')
@@ -176,7 +169,7 @@ class NewPropertySerializer (serializers.ModelSerializer):
                         MediaFiles(album=image_album, image=image, media_type='IMAGE'))
                 
                 MediaFiles.objects.bulk_create(media_files_array)
-                instance.image_album = image_album
+                updatable_fields['image_album'] = image_album
 
             elif key == 'documents':
                 media_files_array = []
@@ -199,13 +192,13 @@ class NewPropertySerializer (serializers.ModelSerializer):
                         MediaFiles(album=document_album, document=document, media_type='DOCUMENT'))
 
                 MediaFiles.objects.bulk_create(media_files_array)
-                instance.document_album= document_album
+                updatable_fields['document_album']= document_album
 
             else:
-                print("CLASS NAME",instance,key)
-                setattr(instance, key, validated_data.get(key))
+                updatable_fields[key] = validated_data.get(key)
 
-        instance.save()
+        print('UPDATABLE',updatable_fields)
+        Property.objects().filter(id=instance.id).update(**updatable_fields)
         return instance
 
 class StayPeriodSerializer (serializers.Serializer):
