@@ -57,12 +57,14 @@ class NewPropertySerializer (serializers.ModelSerializer):
         min_length=1,
         max_length=6
     )
+    scheduled_stays = serializers.CharField(required=False)
 
     class Meta:
         model = Property
         fields = '__all__'
         extra_kwargs = {'images': {'write_only': True},
-                        'documents': {'write_only': True}}
+                        'documents': {'write_only': True}
+                        }
 
     def validate(self, attrs):
         benefits = attrs.get('benefits','')

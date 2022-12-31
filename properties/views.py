@@ -1,11 +1,13 @@
 from rest_framework import (views, permissions, parsers)
 from rest_framework.response import Response
 from django.db import transaction
+from rest_framework.filters import SearchFilter
+from rest_framework.viewsets import ReadOnlyModelViewSet
 
-from .serializers import (NewPropertySerializer,
-                          StayPeriodSerializer, PropertySerializer)
+from .serializers import (NewPropertySerializer, StayPeriodSerializer, PropertySerializer)
 from authentication.permissions import IsAgent
-from .models import Property
+from .models import Property, MediaFiles
+from utils.pagination import CustomPagination
 
 class NewPropertyAPIView(views.APIView):
 
@@ -21,9 +23,16 @@ class NewPropertyAPIView(views.APIView):
         serializer.validated_data['agent'] = request.user
 
         with transaction.atomic():
-            serializer.save()
-    
-        return Response( {'message':'successful'}, status=200)
+            property=serializer.save()
+            property = Property.objects.filter(id=property.id).values()[0]
+            
+            ## fetch media files
+            property['images'] = MediaFiles.objects.filter(
+                album=property['image_album_id']).values('image')
+            property['documents'] = MediaFiles.objects.filter(
+                album=property['document_album_id']).values('document')
+
+        return Response( property, status=200)
 
 
 class StayPeriodAPIView(views.APIView):
@@ -81,7 +90,22 @@ class StayPeriodAPIView(views.APIView):
         return Response(property.scheduled_stays, status=200)
 
 
-class PropertyAPIView(views.APIView):
+class PropertyListView(ReadOnlyModelViewSet):
+
+    filter_backends = [SearchFilter]
+    serializer_class = PropertySerializer
+    permission_classes = [permissions.IsAuthenticated, IsAgent]
+    search_fields = ['name', 'id']
+    pagination_class = CustomPagination
+
+    def get_queryset(self):
+        user_id = self.request.user.id
+        return Property.objects.filter(
+            agent=user_id
+        ).order_by('-created_at')
+
+
+class PropertyDetailView(views.APIView):
 
     serializer_class = PropertySerializer
     permission_classes = [permissions.IsAuthenticated, IsAgent]
@@ -99,7 +123,16 @@ class PropertyAPIView(views.APIView):
 
         serializer = self.serializer_class(property)
 
-        return Response(serializer.data, status=200)
+
+        # fetch media files
+        output = serializer.data
+        output['images'] = MediaFiles.objects.filter(
+            album=property.image_album_id).values('image')
+
+        output['documents'] = MediaFiles.objects.filter(
+            album=property.document_album).values('document')
+            
+        return Response(output, status=200)
 
 class UpdatePropertyAPIView(views.APIView):
 
