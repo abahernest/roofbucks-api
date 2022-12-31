@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 from users.models import User
 from django.contrib.postgres.fields import ArrayField
@@ -51,6 +52,7 @@ class MediaFiles(models.Model):
 
 # MediaFiles.album.__repr__.__class__
 class Property(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=256, blank=False)
     agent = models.ForeignKey(User, on_delete=models.CASCADE)
     description = models.TextField(blank=True)
@@ -110,4 +112,10 @@ class Property(models.Model):
 
     class Meta:
         db_table = 'Properties'
+
+    def attach_images(self):
+        self.images = MediaFiles.objects.filter(album=self.image_album).values()
+
+    def attach_documents(self):
+        self.documents = MediaFiles.objects.filter(album=self.document_album).values()
 

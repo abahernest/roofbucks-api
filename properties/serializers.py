@@ -56,12 +56,14 @@ class NewPropertySerializer (serializers.ModelSerializer):
         min_length=1,
         max_length=6
     )
+    scheduled_stays = serializers.CharField(required=False)
 
     class Meta:
         model = Property
         fields = '__all__'
         extra_kwargs = {'images': {'write_only': True},
-                        'documents': {'write_only': True}}
+                        'documents': {'write_only': True}
+                        }
 
     def validate(self, attrs):
         benefits = attrs.get('benefits')
@@ -71,16 +73,16 @@ class NewPropertySerializer (serializers.ModelSerializer):
         scheduled_stays = attrs.get('scheduled_stays')
 
         if benefits:
-            attrs['benefits'] = benefits.strip().split(',')
+            attrs['benefits'] = benefits[0].strip().split(',')
 
         if amenities:
-            attrs['amenities'] = amenities.strip().split(',')
+            attrs['amenities'] = amenities[0].strip().split(',')
 
         if cross_streets:
-            attrs['cross_streets'] = cross_streets.strip().split(',')
+            attrs['cross_streets'] = cross_streets[0].strip().split(',')
 
         if landmarks:
-            attrs['landmarks'] = landmarks.strip().split(',')
+            attrs['landmarks'] = landmarks[0].strip().split(',')
 
         if scheduled_stays:
             final_scheduled_stays = []
@@ -152,3 +154,10 @@ class StayPeriodSerializer (serializers.Serializer):
         instance.save()
 
         return instance
+
+
+class PropertySerializer (serializers.ModelSerializer):
+
+    class Meta:
+        model = Property
+        fields = '__all__'
