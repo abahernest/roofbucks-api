@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.1/ref/settings/
 """
 
+import warnings
 import datetime
 import os
 from pathlib import Path
@@ -223,4 +224,8 @@ AWS_S3_VERIFY = True
 DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage' if DEBUG is False else 'django.core.files.storage.FileSystemStorage'
 
 # Use Timezones for dates
-USE_TZ=True
+USE_TZ = True
+warnings.filterwarnings(
+    'error', r"DateTimeField .* received a naive datetime",
+    RuntimeWarning, r'django\.db\.models\.fields',
+)
