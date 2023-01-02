@@ -50,7 +50,15 @@ class MediaFiles(models.Model):
     class Meta:
         db_table = 'MediaFiles'
 
-# MediaFiles.album.__repr__.__class__
+    def delete_image_from_storage(self):
+        if self.image:
+            self.image.delete(save=False)
+
+    def delete_document_from_storage(self):
+        if self.document:
+            self.document.delete(save=False)
+
+
 class Property(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=256, blank=False)

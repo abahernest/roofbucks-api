@@ -103,3 +103,46 @@ class PropertyListView(ReadOnlyModelViewSet):
         return Property.objects.filter(
             agent=user_id
         ).order_by('-created_at')
+
+
+class RemoveMediaView(views.APIView):
+
+    permission_classes = [permissions.IsAuthenticated, IsAgent]
+
+    def delete(self, request, media_type, property_id, media_id):
+
+        properties = Property.objects.filter(id=property_id)
+        if len(properties) < 1:
+            return Response({'message': 'No property with that ID'}, status=400)
+
+        property = properties[0]
+        if property.agent != request.user:
+            return Response({'message': 'This resource belongs to another user'}, status=400)
+        
+        ## Determine album ID of media file to delete
+        album_id = None
+        if media_type == 'image':
+            album_id = property.image_album
+        elif media_type == 'document':
+            album_id = property.document_album
+        else:
+            return Response({'message': 'media_type must be either "image" or "document"'}, status=400)
+
+        media_files = MediaFiles.objects.filter(id=media_id, album=album_id)
+        if len(media_files) < 1:
+            return Response({'message': 'No Media file with that ID'}, status=400)
+
+        mediafile = media_files[0]
+        filename = None
+        with transaction.atomic():
+            mediafile.delete()
+            if media_type =='image': 
+                filename = mediafile.image.name
+                mediafile.delete_image_from_storage()
+            else : 
+                filename = mediafile.document.name
+                mediafile.delete_document_from_storage()
+            ## notice that MediaAlbum is not deleted even if media is last item in album
+
+        return Response({'message':f'successfully deleted {filename}'}, status=200)
+    

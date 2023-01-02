@@ -1,5 +1,6 @@
 from django.urls import path
-from .views import (NewPropertyAPIView, StayPeriodAPIView, PropertyListView)
+from .views import (NewPropertyAPIView, StayPeriodAPIView,
+                    PropertyListView, RemoveMediaView)
 
 urlpatterns = [
     path(
@@ -9,4 +10,5 @@ urlpatterns = [
          StayPeriodAPIView.as_view(), name='add_stay_periods'),
     path('stay-periods/<property_id>/<index_of_stay_period>/',
          StayPeriodAPIView.as_view(), name='delete_stay_periods'),
+    path('media/<media_type>/<property_id>/<media_id>/', RemoveMediaView.as_view(), name='property_media'),
 ]
