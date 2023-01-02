@@ -17,6 +17,7 @@ mailjet-rest = "*"
 django-storages = "*"
 pillow = "*"
 boto3 = "*"
+pytz = "*"
 
 [dev-packages]
 

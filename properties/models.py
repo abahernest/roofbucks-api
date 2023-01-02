@@ -121,9 +121,9 @@ class Property(models.Model):
     class Meta:
         db_table = 'Properties'
 
-    def attach_images(self):
-        self.images = MediaFiles.objects.filter(album=self.image_album).values()
+    def get_images(self):
+        return MediaFiles.objects.filter(album=self.image_album).values('image')
 
-    def attach_documents(self):
-        self.documents = MediaFiles.objects.filter(album=self.document_album).values()
+    def get_documents(self):
+        return MediaFiles.objects.filter(album=self.document_album).values('document')
 
