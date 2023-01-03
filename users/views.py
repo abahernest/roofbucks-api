@@ -57,7 +57,11 @@ class BusinessProfileView(views.APIView):
                     'errors':['User has no company']
                 }, status=404)
 
-            properties = Property.objects.filter(agent=user_id).all()
+            order = '-created_at'
+            if request.GET.get('order_by') == 'created_at':
+                order = 'created_at'
+                
+            properties = Property.objects.filter(agent=user_id).all().order_by(order)
 
             for property in properties:
                 if property.image_album:
