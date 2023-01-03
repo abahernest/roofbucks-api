@@ -31,50 +31,67 @@ class SignupView(generics.GenericAPIView):
     serializer_class = SignupSerializer
 
     def post(self, request):
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
 
-        # check that user doesn't exist
-        users = User.objects.filter(phone=serializer.validated_data['email'])
-        if len(users) > 0 :
+        try:
+            serializer = self.serializer_class(data=request.data)
+            serializer.is_valid(raise_exception=True)
+
+            # check that user doesn't exist
+            users = User.objects.filter(phone=serializer.validated_data['email'])
+            if len(users) > 0 :
+                return Response({
+                    "errors": ["User already exists"],
+                }, status.HTTP_400_BAD_REQUEST)
+
+            with transaction.atomic():
+                # pesist user in db
+                user = serializer.save()
+                
+                user_data = serializer.data
+
+                # generate email verification token
+                token = User.objects.make_random_password(length=6, allowed_chars=f'0123456789')
+                token_expiry = timezone.now() + timedelta(minutes=6)
+
+                EmailVerification.objects.create(user=user, token=token, token_expiry=token_expiry)
+
+                # Send Mail
+                data = {"token":token, "firstname": user.firstname, 'to_email': user.email}
+                SendMail.send_email_verification_mail(data)
+
             return Response({
-                "message": "User already exists",
-            }, status.HTTP_400_BAD_REQUEST)
+                "message": "Registration successful. Check email for verification code"
+                }, status=status.HTTP_201_CREATED)
 
-        with transaction.atomic():
-            # pesist user in db
-            user = serializer.save()
-            
-            user_data = serializer.data
-
-            # generate email verification token
-            token = User.objects.make_random_password(length=6, allowed_chars=f'0123456789')
-            token_expiry = timezone.now() + timedelta(minutes=6)
-
-            EmailVerification.objects.create(user=user, token=token, token_expiry=token_expiry)
-
-            # Send Mail
-            data = {"token":token, "firstname": user.firstname, 'to_email': user.email}
-            SendMail.send_email_verification_mail(data)
-
-        return Response({"message": "Registration successful. Check email for verification code"}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)
 
 class LoginView(generics.GenericAPIView):
     serializer_class = LoginSerializer
 
     def post(self, request):
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+
+        try:
+            serializer = self.serializer_class(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)
 
 
 class VerifyEmail(generics.GenericAPIView):
     serializer_class = EmailVerificationSerializer
 
     def post(self, request):
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        return Response({"message": "successful"}, status=status.HTTP_200_OK)
+
+        try:
+            serializer = self.serializer_class(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            return Response({"message": "successful"}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)
 
 
 class RequestPasswordResetEmail(generics.GenericAPIView):
@@ -82,16 +99,22 @@ class RequestPasswordResetEmail(generics.GenericAPIView):
 
     def post(self, request):
         
-        # validate request body
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        try:
+            # validate request body
+            serializer = self.serializer_class(data=request.data)
+            serializer.is_valid(raise_exception=True)
 
-        # serializer validated_data retuns custom "False" value if encounters error
-        if serializer.validated_data != False:
-            #send mail
-            SendMail.send_password_reset_mail(serializer.data, request=request)
+            # serializer validated_data retuns custom "False" value if encounters error
+            if serializer.validated_data != False:
+                #send mail
+                SendMail.send_password_reset_mail(serializer.data, request=request)
 
-        return Response({'message': 'We have sent you a link to reset your password'}, status=status.HTTP_200_OK)
+            return Response({
+                'message': 'We have sent you a link to reset your password'
+                }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)
 
 
 class CustomRedirect(HttpResponsePermanentRedirect):
@@ -120,9 +143,14 @@ class SetNewPasswordAPIView(generics.GenericAPIView):
     serializer_class = SetNewPasswordSerializer
 
     def patch(self, request):
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        return Response({'message': 'Password reset successful'}, status=status.HTTP_200_OK)
+
+        try:
+            serializer = self.serializer_class(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            return Response({'message': 'Password reset successful'}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)
 
 
 
@@ -133,17 +161,21 @@ class VerifyCompanyAPIView(views.APIView):
 
     def post(self,request):
 
-        reg_objects = Company.objects.filter(user=request.user)
-        if len(reg_objects)>=1 and reg_objects[0].is_verified:
-            return Response({
-                'registration_number': reg_objects[0].registration_number,
-                'reference_number': reg_objects[0].reference_number,
-                'registered_name': reg_objects[0].registered_name,
-            }, status=200)
+        try:
+            reg_objects = Company.objects.filter(user=request.user)
+            if len(reg_objects)>=1 and reg_objects[0].is_verified:
+                return Response({
+                    'registration_number': reg_objects[0].registration_number,
+                    'reference_number': reg_objects[0].reference_number,
+                    'registered_name': reg_objects[0].registered_name,
+                }, status=200)
 
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
-            
-        Company.objects.create(**serializer.validated_data, user= request.user, is_verified= True)
+            serializer = self.serializer_class(data=request.data)
+            serializer.is_valid(raise_exception=True)
+                
+            Company.objects.create(**serializer.validated_data, user= request.user, is_verified= True)
 
-        return Response(serializer.validated_data, status=200)
+            return Response(serializer.validated_data, status=200)
+
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)

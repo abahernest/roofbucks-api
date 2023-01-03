@@ -17,25 +17,31 @@ class Profile(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def patch(self,request):
+        try:
+            user_id = request.user.id
+            user = User.objects.get(id=user_id)
 
-        user_id = request.user.id
-        user = User.objects.get(id=user_id)
+            serializer = self.serializer_class(user, data=request.data)
+            serializer.is_valid(raise_exception=True)
 
-        serializer = self.serializer_class(user, data=request.data)
-        serializer.is_valid(raise_exception=True)
+            serializer.save()
 
-        serializer.save()
-
-        return Response(serializer.data, status=200)
+            return Response(serializer.data, status=200)
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)
 
     def get(self,request):
 
-        user_id = request.GET.get('user_id') if request.GET.get('user_id') else request.user.id
-        user = User.objects.get(id=user_id)
-        
-        serializer = self.serializer_class(user)
+        try:
+            user_id = request.GET.get('user_id') if request.GET.get('user_id') else request.user.id
+            user = User.objects.get(id=user_id)
+            
+            serializer = self.serializer_class(user)
 
-        return Response(serializer.data, status=200)
+            return Response(serializer.data, status=200)
+
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)
         
 
 class BusinessProfileView(views.APIView):
@@ -84,23 +90,28 @@ class CreateCompany(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        reference_number = request.data.get('reference_number', '')
 
-        company_objects = Company.objects.filter(
-            reference_number=reference_number, user = request.user)
+        try:
+            reference_number = request.data.get('reference_number', '')
 
-        if len(company_objects) == 0:
-            return Response({"errors":["reference number not found. validate your company registration number again"]}, status=400)
+            company_objects = Company.objects.filter(
+                reference_number=reference_number, user = request.user)
 
-        if not company_objects[0].is_verified:
-            return Response({"errors": ["verify company registration number"]}, status=400)
+            if len(company_objects) == 0:
+                return Response({"errors":["reference number not found. validate your company registration number again"]}, status=400)
 
-        serializer = self.serializer_class(company_objects[0], data=request.data)
-        serializer.is_valid(raise_exception=True)
+            if not company_objects[0].is_verified:
+                return Response({"errors": ["verify company registration number"]}, status=400)
 
-        serializer.save()
+            serializer = self.serializer_class(company_objects[0], data=request.data)
+            serializer.is_valid(raise_exception=True)
 
-        return Response(serializer.data, status=200)
+            serializer.save()
+
+            return Response(serializer.data, status=200)
+
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)
 
 
 class AddBankInformation(views.APIView):
@@ -110,12 +121,16 @@ class AddBankInformation(views.APIView):
 
     def patch(self, request):
 
-        company_objects = Company.objects.filter(user=request.user)
+        try:
+            company_objects = Company.objects.filter(user=request.user)
 
-        if len(company_objects) ==0:
-            return Response({ "errors": ["User hasn't registered a business."]}, status=400)
+            if len(company_objects) ==0:
+                return Response({ "errors": ["User hasn't registered a business."]}, status=400)
 
-        serializer = self.serializer_class(company_objects[0], data=request.data )
-        serializer.is_valid(raise_exception=True)
-        output = serializer.save()
-        return Response(output, status=200)
+            serializer = self.serializer_class(company_objects[0], data=request.data )
+            serializer.is_valid(raise_exception=True)
+            output = serializer.save()
+            return Response(output, status=200)
+
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)

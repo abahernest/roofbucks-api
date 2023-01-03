@@ -20,22 +20,26 @@ class NewPropertyAPIView(views.APIView):
 
     def post(self, request):
         
-        serializer = self.serializer_class(data= request.data)
-        serializer.is_valid(raise_exception=True)
+        try:
+            serializer = self.serializer_class(data= request.data)
+            serializer.is_valid(raise_exception=True)
 
-        serializer.validated_data['agent'] = request.user
+            serializer.validated_data['agent'] = request.user
 
-        with transaction.atomic():
-            property=serializer.save()
-            property = Property.objects.filter(id=property.id).values()[0]
-            
-            ## fetch media files
-            property['images'] = MediaFiles.objects.filter(
-                album=property['image_album_id']).values('image','id')
-            property['documents'] = MediaFiles.objects.filter(
-                album=property['document_album_id']).values('document','id')
+            with transaction.atomic():
+                property=serializer.save()
+                property = Property.objects.filter(id=property.id).values()[0]
+                
+                ## fetch media files
+                property['images'] = MediaFiles.objects.filter(
+                    album=property['image_album_id']).values('image','id')
+                property['documents'] = MediaFiles.objects.filter(
+                    album=property['document_album_id']).values('document','id')
 
-        return Response( property, status=200)
+            return Response(property, status=200)
+
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)
 
 
 class StayPeriodAPIView(views.APIView):
@@ -45,52 +49,64 @@ class StayPeriodAPIView(views.APIView):
 
     def patch (self, request, property_id):
         
-        properties = Property.objects.filter(id=property_id)
-        if len(properties) <1:
-            return Response({'message':'No property with that ID'}, status=400)
+        try:
+            properties = Property.objects.filter(id=property_id)
+            if len(properties) <1:
+                return Response({'errors': ['No property with that ID']}, status=400)
 
-        property = properties[0]    
-        serializer = self.serializer_class(property, data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        if property.agent != request.user:
-            return Response({'message':'This resource belongs to another user'}, status=400)
+            property = properties[0]    
+            serializer = self.serializer_class(property, data=request.data)
+            serializer.is_valid(raise_exception=True)
+            
+            if property.agent != request.user:
+                return Response({'errors': ['This resource belongs to another user']}, status=400)
 
-        with transaction.atomic():
-            serializer.save()
+            with transaction.atomic():
+                serializer.save()
 
-        return Response( {'message':'successful'}, status=200)
+            return Response({'message': 'successful'}, status=200)
+
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)
 
     def get (self, request, property_id):
 
-        properties = Property.objects.filter(id=property_id)
-        if len(properties) <1:
-            return Response({'message':'No property with that ID'}, status=400)
-        
-        property = properties[0]
-        if property.agent != request.user:
-            return Response({'message':'This resource belongs to another user'}, status=400)
+        try:
+            properties = Property.objects.filter(id=property_id)
+            if len(properties) <1:
+                return Response({'errors': ['No property with that ID']}, status=400)
+            
+            property = properties[0]
+            if property.agent != request.user:
+                return Response({'errors': ['This resource belongs to another user']}, status=400)
 
-        return Response(property.scheduled_stays, status=200)
+            return Response(property.scheduled_stays, status=200)
+
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)
 
     def delete(self, request, property_id, index_of_stay_period):
          
-        properties = Property.objects.filter(id=property_id)
-        if len(properties) < 1:
-            return Response({'message': 'No property with that ID'}, status=400)
-
-        property = properties[0]
-        if property.agent != request.user:
-            return Response({'message': 'This resource belongs to another user'}, status=400)
-
         try:
-            property.scheduled_stays.pop(int(index_of_stay_period))
-        except:
-            return Response({'message': 'Scheduled stay Index out of range'}, status=400)
+            properties = Property.objects.filter(id=property_id)
+            if len(properties) < 1:
+                return Response({'errors': ['No property with that ID']}, status=400)
 
-        property.save()
+            property = properties[0]
+            if property.agent != request.user:
+                return Response({'errors': ['This resource belongs to another user']}, status=400)
 
-        return Response(property.scheduled_stays, status=200)
+            try:
+                property.scheduled_stays.pop(int(index_of_stay_period))
+            except:
+                return Response({'errors': ['Scheduled stay Index out of range']}, status=400)
+
+            property.save()
+
+            return Response(property.scheduled_stays, status=200)
+
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)
 
 
 class PropertyListView(ReadOnlyModelViewSet):
@@ -115,27 +131,31 @@ class PropertyDetailView(views.APIView):
 
     def get(self, request, property_id):
         
-        properties = Property.objects.filter(id=property_id)
-        if len(properties) < 1:
-            return Response({'message': 'No property with that ID'}, status=400)
+        try:
+            properties = Property.objects.filter(id=property_id)
+            if len(properties) < 1:
+                return Response({'errors': ['No property with that ID']}, status=400)
 
-        property = properties[0]
+            property = properties[0]
 
-        if property.agent != request.user:
-            return Response({'message': 'This resource belongs to another user'}, status=400)
+            if property.agent != request.user:
+                return Response({'errors': ['This resource belongs to another user']}, status=400)
 
-        serializer = self.serializer_class(property)
+            serializer = self.serializer_class(property)
 
 
-        # fetch media files
-        output = serializer.data
-        output['images'] = MediaFiles.objects.filter(
-            album=property.image_album_id).values('image')
+            # fetch media files
+            output = serializer.data
+            output['images'] = MediaFiles.objects.filter(
+                album=property.image_album_id).values('image')
 
-        output['documents'] = MediaFiles.objects.filter(
-            album=property.document_album).values('document')
-            
-        return Response(output, status=200)
+            output['documents'] = MediaFiles.objects.filter(
+                album=property.document_album).values('document')
+                
+            return Response(output, status=200)
+
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)
 
 class UpdatePropertyAPIView(views.APIView):
 
@@ -144,28 +164,32 @@ class UpdatePropertyAPIView(views.APIView):
 
     def patch(self, request, property_id):
 
-        properties = Property.objects.filter(id=property_id)
-        if len(properties) < 1:
-            return Response({'message': 'No property with that ID'}, status=400)
+        try:
+            properties = Property.objects.filter(id=property_id)
+            if len(properties) < 1:
+                return Response({'errors': ['No property with that ID']}, status=400)
 
-        property = properties[0]
-        if property.agent != request.user:
-            return Response({'message': 'This resource belongs to another user'}, status=400)
+            property = properties[0]
+            if property.agent != request.user:
+                return Response({'errors': ['This resource belongs to another user']}, status=400)
 
-        serializer = self.serializer_class(property, data=request.data)
-        serializer.is_valid(raise_exception=True)
+            serializer = self.serializer_class(property, data=request.data)
+            serializer.is_valid(raise_exception=True)
 
-        with transaction.atomic():
-            serializer.save()
+            with transaction.atomic():
+                serializer.save()
 
-        property = Property.objects.filter(id=property.id).values()[0]
-        
-        # fetch media files
-        property['images'] = MediaFiles.objects.filter(
-            album=property['image_album_id']).values('image', 'id')
-        property['documents'] = MediaFiles.objects.filter(
-            album=property['document_album_id']).values('document', 'id')
-        return Response( property , status=200)
+            property = Property.objects.filter(id=property.id).values()[0]
+            
+            # fetch media files
+            property['images'] = MediaFiles.objects.filter(
+                album=property['image_album_id']).values('image', 'id')
+            property['documents'] = MediaFiles.objects.filter(
+                album=property['document_album_id']).values('document', 'id')
+            return Response(property, status=200)
+
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)
 
 class RemoveMediaView(views.APIView):
 
@@ -173,38 +197,42 @@ class RemoveMediaView(views.APIView):
 
     def delete(self, request, media_type, property_id, media_id):
 
-        properties = Property.objects.filter(id=property_id)
-        if len(properties) < 1:
-            return Response({'message': 'No property with that ID'}, status=400)
+        try:
+            properties = Property.objects.filter(id=property_id)
+            if len(properties) < 1:
+                return Response({'errors': ['No property with that ID']}, status=400)
 
-        property = properties[0]
-        if property.agent != request.user:
-            return Response({'message': 'This resource belongs to another user'}, status=400)
-        
-        ## Determine album ID of media file to delete
-        album_id = None
-        if media_type == 'image':
-            album_id = property.image_album
-        elif media_type == 'document':
-            album_id = property.document_album
-        else:
-            return Response({'message': 'media_type must be either "image" or "document"'}, status=400)
+            property = properties[0]
+            if property.agent != request.user:
+                return Response({'errors': ['This resource belongs to another user']}, status=400)
+            
+            ## Determine album ID of media file to delete
+            album_id = None
+            if media_type == 'image':
+                album_id = property.image_album
+            elif media_type == 'document':
+                album_id = property.document_album
+            else:
+                return Response({'errors': ['media_type must be either "image" or "document"']}, status=400)
 
-        media_files = MediaFiles.objects.filter(id=media_id, album=album_id)
-        if len(media_files) < 1:
-            return Response({'message': 'No Media file with that ID'}, status=400)
+            media_files = MediaFiles.objects.filter(id=media_id, album=album_id)
+            if len(media_files) < 1:
+                return Response({'errors': ['No Media file with that ID']}, status=400)
 
-        mediafile = media_files[0]
-        filename = None
-        with transaction.atomic():
-            mediafile.delete()
-            if media_type =='image': 
-                filename = mediafile.image.name
-                mediafile.delete_image_from_storage()
-            else : 
-                filename = mediafile.document.name
-                mediafile.delete_document_from_storage()
-            ## notice that MediaAlbum is not deleted even if media is last item in album
+            mediafile = media_files[0]
+            filename = None
+            with transaction.atomic():
+                mediafile.delete()
+                if media_type =='image': 
+                    filename = mediafile.image.name
+                    mediafile.delete_image_from_storage()
+                else : 
+                    filename = mediafile.document.name
+                    mediafile.delete_document_from_storage()
+                ## notice that MediaAlbum is not deleted even if media is last item in album
 
-        return Response({'message':f'successfully deleted {filename}'}, status=200)
+            return Response({'message': f'successfully deleted {filename}'}, status=200)
+
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)
     
