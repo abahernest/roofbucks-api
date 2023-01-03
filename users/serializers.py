@@ -1,8 +1,9 @@
 from rest_framework import serializers
 from django.utils import timezone, dateparse
 dateparse.parse_date
-from .models import User, Company
 
+from .models import User, Company
+from properties.serializers import PropertySerializer
 
 class UpdateProfileSerializer (serializers.ModelSerializer):
 
@@ -158,3 +159,19 @@ class AddBankInfoSerializer (serializers.ModelSerializer):
         instance.save()
 
         return instance.bank_information
+
+class UserSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = User
+        fields = '__all__'
+
+
+class BusinessProfileSerializer (serializers.ModelSerializer):
+
+    user = UserSerializer()
+    properties = PropertySerializer(many=True, required=False)
+
+    class Meta:
+        model = Company
+        fields = '__all__'

@@ -4,7 +4,9 @@ from rest_framework import views
 from rest_framework import (parsers,permissions,authentication)
 
 from .models import User, Company
-from .serializers import (UpdateProfileSerializer, CreateCompanySerializer, AddBankInfoSerializer)
+from properties.models import MediaAlbum, Property, MediaFiles
+from .serializers import (UpdateProfileSerializer, CreateCompanySerializer,
+                          AddBankInfoSerializer, BusinessProfileSerializer)
 
 
 class Profile(views.APIView):
@@ -34,6 +36,20 @@ class Profile(views.APIView):
 
         return Response(serializer.data, status=200)
         
+
+class BusinessProfileView(views.APIView):
+
+    serializer_class = BusinessProfileSerializer
+
+    def get(self, request, user_id):
+        
+        company = Company.objects.select_related('user').get(user=user_id)
+        # user_properties = User.objects.prefetch_related('properties_set').get(id=company.user)
+        # properties = MediaAlbum.objects.prefetch_related('MediaFiles_set').get(id=company.user)
+        serializer = self.serializer_class(company)
+
+        return Response( serializer.data, status=200)
+
 class CreateCompany(views.APIView):
 
     serializer_class = CreateCompanySerializer
