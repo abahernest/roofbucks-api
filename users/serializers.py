@@ -182,3 +182,11 @@ class BusinessProfileSerializer (serializers.ModelSerializer):
     class Meta:
         model = User
         exclude = ['password']
+
+class AgentListSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = User
+        fields = ['id', 'firstname', 'lastname', 'phone', 
+        'email', 'city', 'country', 'secondary_phone', 
+        'display_photo', 'title', 'summary']

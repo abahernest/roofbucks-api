@@ -1,8 +1,10 @@
 from django.urls import path
 from .views import (Profile, CreateCompany,
-                    AddBankInformation, BusinessProfileView)
+                    AddBankInformation, BusinessProfileView, 
+                    AgentListView)
 
 urlpatterns = [
+    path('agent_list/', AgentListView.as_view({'get':'list'}), name='agent_list'),
     path('profile/', Profile.as_view(), name='profile'),
     path('add_business/', CreateCompany.as_view(), name='add_business'),
     path('add_bank_information/', AddBankInformation.as_view(),

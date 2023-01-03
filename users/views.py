@@ -1,13 +1,16 @@
 from rest_framework.response import Response
 from django.http import JsonResponse
 from rest_framework import views
+from rest_framework.filters import SearchFilter
 from rest_framework import (parsers,permissions,authentication)
+from rest_framework.viewsets import ReadOnlyModelViewSet
 
 from .models import User, Company
-from properties.models import MediaAlbum, Property, MediaFiles
+from properties.models import Property
 from .serializers import (UpdateProfileSerializer, CreateCompanySerializer,
-                          AddBankInfoSerializer, BusinessProfileSerializer)
-from properties.serializers import PropertySerializer
+                          AddBankInfoSerializer, BusinessProfileSerializer,
+                          AgentListSerializer)
+from utils.pagination import CustomPagination
 
 
 class Profile(views.APIView):
@@ -132,3 +135,17 @@ class AddBankInformation(views.APIView):
 
         except Exception as e:
             return Response({'errors': e.args}, status=500)
+
+
+class AgentListView(ReadOnlyModelViewSet):
+
+    filter_backends = [SearchFilter]
+    serializer_class = AgentListSerializer
+    search_fields = ['firstname', 'lastname']
+    pagination_class = CustomPagination
+
+    def get_queryset(self):
+        return User.objects.filter(
+            role='AGENT',
+            is_verified=True
+        ).order_by('-created_at')
