@@ -57,7 +57,7 @@ class BusinessProfileView(views.APIView):
             ## attach company info to user object
             user = user[0]
             company = user.get_company()
-            print('COMPANY', company)
+
             if not company:
                 return Response({
                     'errors':['User has no company']
@@ -70,10 +70,8 @@ class BusinessProfileView(views.APIView):
             properties = Property.objects.filter(agent=user_id).all().order_by(order)
 
             for property in properties:
-                if property.image_album:
-                    property.get_images()
-                if property.document_album:
-                    property.get_documents()
+                property.get_images()
+                property.get_documents()
 
             setattr(user, 'properties', properties)
 

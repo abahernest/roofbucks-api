@@ -151,9 +151,11 @@ class NewPropertySerializer (serializers.ModelSerializer):
         total_images_uploaded, total_documents_uploaded = None, None
 
         if validated_data.get('images'):
-            total_images_uploaded = len(instance.get_images())
+            images = instance.get_images()
+            total_images_uploaded = len(images) if (images !=None) else 0
         if validated_data.get('documents'): 
-            total_documents_uploaded = len(instance.get_documents())
+            documents = instance.get_documents()
+            total_documents_uploaded = len(documents) if (documents !=None) else 0
 
         updatable_fields = {}
         for key in validated_data:

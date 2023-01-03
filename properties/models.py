@@ -122,9 +122,13 @@ class Property(models.Model):
         db_table = 'Properties'
 
     def get_images(self):
+        if not self.image_album:
+            return None
         setattr(self,'images', MediaFiles.objects.filter(album=self.image_album))
         return self.images
 
     def get_documents(self):
+        if not self.document_album:
+            return None
         setattr(self, 'documents', MediaFiles.objects.filter(album=self.document_album))
         return self.documents

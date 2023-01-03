@@ -4,13 +4,14 @@ from rest_framework.response import Response
 from django.db import transaction
 from rest_framework.filters import SearchFilter
 from rest_framework.viewsets import ReadOnlyModelViewSet
-from rest_framework.exceptions import ParseError
+from django.db.models import Q
 
 from .serializers import (NewPropertySerializer, StayPeriodSerializer, PropertySerializer)
 from authentication.permissions import IsAgent
 from .models import Property, MediaFiles, MediaAlbum
 from utils.pagination import CustomPagination
-from utils.constants import (ALLOWABLE_NUMBER_OF_DOCUMENTS, ALLOWABLE_NUMBER_OF_IMAGES)
+from utils.constants import (ALLOWABLE_NUMBER_OF_DOCUMENTS,
+                             ALLOWABLE_NUMBER_OF_IMAGES, MAXIMUM_SIMILAR_PROPERTIES)
 
 class NewPropertyAPIView(views.APIView):
 
@@ -122,6 +123,34 @@ class PropertyListView(ReadOnlyModelViewSet):
         return Property.objects.filter(
             agent=user_id
         ).order_by('-created_at')
+
+
+class SimilarPropertyView(views.APIView):
+
+    serializer_class = PropertySerializer
+    pagination_class = CustomPagination
+
+    def get(self, request, property_id):
+        try:
+            properties = Property.objects.filter(id=property_id)
+            if len(properties) < 1:
+                return Response({'errors': ['No property with that ID']}, status=400)
+            
+            properties = Property.objects.filter(
+                ~Q(id=property_id), 
+                name__icontains = properties[0].name
+                )[:MAXIMUM_SIMILAR_PROPERTIES]
+
+            for property in properties:
+                property.get_images()
+                property.get_documents()
+
+            serializer = self.serializer_class(properties, many=True)
+
+            return Response(serializer.data, status=200)
+
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)
 
 
 class PropertyDetailView(views.APIView):
