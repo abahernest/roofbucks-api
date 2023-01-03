@@ -127,7 +127,6 @@ class PropertyListView(ReadOnlyModelViewSet):
 class PropertyDetailView(views.APIView):
 
     serializer_class = PropertySerializer
-    permission_classes = [permissions.IsAuthenticated, IsAgent]
 
     def get(self, request, property_id):
         
@@ -151,7 +150,26 @@ class PropertyDetailView(views.APIView):
 
             output['documents'] = MediaFiles.objects.filter(
                 album=property.document_album).values('document')
-                
+
+            ## fetcy agent information and company information
+            company = property.agent.get_company()
+            company_name = company.registered_name if (company !=None) else None
+
+            number_of_listed_properties= Property.objects.filter(
+                agent=property.agent, moderation_status='APPROVED').count()
+
+            output['agent'] = {
+                'id': property.agent_id,
+                'firstname': property.agent.firstname,
+                'lastname': property.agent.lastname,
+                'display_photo': property.agent.display_photo.url,
+                'natinality': property.agent.nationality,
+                'email': property.agent.email,
+                'phone': property.agent.phone,
+                'agency': company_name,
+                'listed_properties': number_of_listed_properties
+            }
+
             return Response(output, status=200)
 
         except Exception as e:
