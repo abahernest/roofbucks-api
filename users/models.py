@@ -107,6 +107,16 @@ class User(AbstractBaseUser, PermissionsMixin):
             'refresh': str(refresh),
             'access': str(refresh.access_token)
         }
+
+    def get_company(self):
+        company = Company.objects.filter(user=self.id).all()
+
+        if len(company)<1:
+            return None
+        
+        setattr(self,'company', company[0])
+        return self.company
+
     class Meta:
         db_table = "Users"
 

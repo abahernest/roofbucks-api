@@ -167,11 +167,18 @@ class UserSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class BusinessProfileSerializer (serializers.ModelSerializer):
-
-    user = UserSerializer()
-    properties = PropertySerializer(many=True, required=False)
+class CompanySerializer (serializers.ModelSerializer):
 
     class Meta:
         model = Company
         fields = '__all__'
+
+
+class BusinessProfileSerializer (serializers.ModelSerializer):
+
+    company = CompanySerializer(required=False)
+    properties = PropertySerializer(many=True, required=False)
+
+    class Meta:
+        model = User
+        exclude = ['password']

@@ -122,8 +122,9 @@ class Property(models.Model):
         db_table = 'Properties'
 
     def get_images(self):
-        return MediaFiles.objects.filter(album=self.image_album).values('image')
+        setattr(self,'images', MediaFiles.objects.filter(album=self.image_album))
+        return self.images
 
     def get_documents(self):
-        return MediaFiles.objects.filter(album=self.document_album).values('document')
-
+        setattr(self, 'documents', MediaFiles.objects.filter(album=self.document_album))
+        return self.documents

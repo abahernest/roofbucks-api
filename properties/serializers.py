@@ -12,7 +12,7 @@ class MediaFilesSerializer (serializers.ModelSerializer):
 
     class Meta:
         model = MediaFiles
-        fields = ['image', 'document']
+        fields = ['image', 'document', 'id']
 
 
 class MediaAlbumSerializer (serializers.ModelSerializer):
@@ -238,6 +238,8 @@ class StayPeriodSerializer (serializers.Serializer):
 
 class PropertySerializer (serializers.ModelSerializer):
 
+    images = MediaFilesSerializer(many=True, required=False)
+    documents = MediaFilesSerializer(many=True, required=False)    
     class Meta:
         model = Property
         fields = '__all__'

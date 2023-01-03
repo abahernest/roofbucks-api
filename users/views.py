@@ -7,6 +7,7 @@ from .models import User, Company
 from properties.models import MediaAlbum, Property, MediaFiles
 from .serializers import (UpdateProfileSerializer, CreateCompanySerializer,
                           AddBankInfoSerializer, BusinessProfileSerializer)
+from properties.serializers import PropertySerializer
 
 
 class Profile(views.APIView):
@@ -42,13 +43,35 @@ class BusinessProfileView(views.APIView):
     serializer_class = BusinessProfileSerializer
 
     def get(self, request, user_id):
-        
-        company = Company.objects.select_related('user').get(user=user_id)
-        # user_properties = User.objects.prefetch_related('properties_set').get(id=company.user)
-        # properties = MediaAlbum.objects.prefetch_related('MediaFiles_set').get(id=company.user)
-        serializer = self.serializer_class(company)
+        try:
+            user = User.objects.filter(id=user_id).all()
+            if len(user) == 0:
+                return Response({'errors':['User not found']}, status=400)
+            
+            ## attach company info to user object
+            user = user[0]
+            company = user.get_company()
+            print('COMPANY', company)
+            if not company:
+                return Response({
+                    'errors':['User has no company']
+                }, status=404)
 
-        return Response( serializer.data, status=200)
+            properties = Property.objects.filter(agent=user_id).all()
+
+            for property in properties:
+                if property.image_album:
+                    property.get_images()
+                if property.document_album:
+                    property.get_documents()
+
+            setattr(user, 'properties', properties)
+
+            serializer = self.serializer_class(user)
+
+            return Response(serializer.data, status=200)
+        except Exception as e:
+            return Response({'errors':e.args}, status=500)
 
 class CreateCompany(views.APIView):
 
