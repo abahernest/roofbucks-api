@@ -6,6 +6,7 @@ from rest_framework import (parsers,permissions,authentication)
 from rest_framework.viewsets import ReadOnlyModelViewSet
 from django.db import transaction
 from rest_framework.decorators import permission_classes
+from django.db.models import Avg, Count
 
 from .models import User, Company, Review
 from properties.models import Property
@@ -13,6 +14,7 @@ from .serializers import (UpdateProfileSerializer, CreateCompanySerializer,
                           AddBankInfoSerializer, BusinessProfileSerializer,
                           AgentListSerializer, ReviewsSerializer)
 from utils.pagination import CustomPagination
+from utils.constants import (NUMBER_OF_REVIEWS_TO_DISPLAY)
 from authentication.permissions import IsCustomer
 
 
@@ -69,6 +71,7 @@ class BusinessProfileView(views.APIView):
                     'errors':['User has no company']
                 }, status=404)
 
+            # attach properties to user object
             order = '-created_at'
             if request.GET.get('order_by') == 'created_at':
                 order = 'created_at'
@@ -80,6 +83,13 @@ class BusinessProfileView(views.APIView):
                 property.get_documents()
 
             setattr(user, 'properties', properties)
+
+            ## attach reviews to user object
+            reviews = Review.objects.filter(company=company)[:NUMBER_OF_REVIEWS_TO_DISPLAY].all()
+            rating = reviews.aggregate(Avg('rating'))
+
+            setattr(user, 'rating', rating['rating__avg'])
+            setattr(user, 'reviews', reviews)
 
             serializer = self.serializer_class(user)
 
@@ -190,7 +200,7 @@ class ReviewCreateView(views.APIView):
 
             serializer = self.serializer_class(data=request.data)
             serializer.is_valid(raise_exception=True)
-            
+
             with transaction.atomic():
                 serializer.save(reviewer = request.user, company = company[0])
 
