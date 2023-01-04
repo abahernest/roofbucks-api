@@ -142,3 +142,19 @@ class Company(models.Model):
 
     class Meta:
         db_table = 'Company'
+
+    def get_reviews(self):
+        setattr (self, 'reviews', Review.objects.filter(company=self))
+        return self.reviews
+
+
+class Review(models.Model):
+    rating  = models.IntegerField(null=True)
+    review  = models.TextField()
+    company = models.ForeignKey(to=Company, null=False, on_delete=models.CASCADE)
+    reviewer = models.ForeignKey(to=User, null=False, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'Reviews'

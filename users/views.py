@@ -4,13 +4,16 @@ from rest_framework import views
 from rest_framework.filters import SearchFilter
 from rest_framework import (parsers,permissions,authentication)
 from rest_framework.viewsets import ReadOnlyModelViewSet
+from django.db import transaction
+from rest_framework.decorators import permission_classes
 
-from .models import User, Company
+from .models import User, Company, Review
 from properties.models import Property
 from .serializers import (UpdateProfileSerializer, CreateCompanySerializer,
                           AddBankInfoSerializer, BusinessProfileSerializer,
-                          AgentListSerializer)
+                          AgentListSerializer, ReviewsSerializer)
 from utils.pagination import CustomPagination
+from authentication.permissions import IsCustomer
 
 
 class Profile(views.APIView):
@@ -149,3 +152,49 @@ class AgentListView(ReadOnlyModelViewSet):
             role='AGENT',
             is_verified=True
         ).order_by('-created_at')
+
+
+class ReviewListView(views.APIView):
+
+    serializer_class = ReviewsSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, company_id):
+
+        try:
+            reviews = Review.objects.filter(company=company_id)
+
+            serializer = self.serializer_class(reviews, many=True)
+
+            return Response(serializer.data, status=200)
+
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)
+
+
+class ReviewCreateView(views.APIView):
+
+    serializer_class = ReviewsSerializer
+    permission_classes = [permissions.IsAuthenticated, IsCustomer]
+
+    def post(self, request, company_id):
+
+        try:
+            company = Company.objects.filter(id=company_id)
+
+            if len(company) == 0:
+                return Response({"errors": ["Company not found"]}, status=400)
+
+            if company[0].user == request.user:
+                return Response({'errors': ["Cannot review this company as it belongs to this user"]}, status=403)
+
+            serializer = self.serializer_class(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            
+            with transaction.atomic():
+                serializer.save(reviewer = request.user, company = company[0])
+
+            return Response(serializer.data, status=200)
+
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)

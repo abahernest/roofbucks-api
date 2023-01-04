@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.utils import timezone, dateparse
 dateparse.parse_date
 
-from .models import User, Company
+from .models import User, Company, Review
 from properties.serializers import PropertySerializer
 
 class UpdateProfileSerializer (serializers.ModelSerializer):
@@ -190,3 +190,37 @@ class AgentListSerializer(serializers.ModelSerializer):
         fields = ['id', 'firstname', 'lastname', 'phone', 
         'email', 'city', 'country', 'secondary_phone', 
         'display_photo', 'title', 'summary']
+
+class ReviewersSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = User
+        fields = ['id', 'display_photo', 'firstname', 'lastname']
+
+class ReviewsSerializer(serializers.ModelSerializer):
+
+    rating = serializers.IntegerField(max_value=5, min_value=1, required=False)
+    review = serializers.CharField(required=False)
+    reviewer = ReviewersSerializer(required=False)
+
+    created_at = serializers.DateTimeField(read_only=True)
+    class Meta:
+        model = Review
+        fields = ['rating', 'review', 'reviewer', 'created_at']
+
+    
+    def validate(self, attrs):
+        rating = attrs.get('rating')
+        review = attrs.get('review')
+
+        if not rating and not review:
+            raise serializers.ValidationError(
+                "must provide 'review' or 'rating'.")
+        
+        return attrs
+
+    def create(self, validated_data) -> Review:
+        
+        return Review.objects.create(
+            **validated_data
+            )

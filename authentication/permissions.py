@@ -12,5 +12,18 @@ class IsAgent(permissions.BasePermission):
         if not user:
             return False
 
-        return 'agent' in user.role.lower()
+        return 'agent' == user.role.lower()
             
+
+class IsCustomer(permissions.BasePermission):
+    """
+    Global permission check for authorized agent
+    """
+
+    def has_permission(self, request, view):
+        user = request.user
+
+        if not user:
+            return False
+
+        return 'customer' == user.role.lower()
