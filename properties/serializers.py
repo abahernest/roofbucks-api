@@ -236,6 +236,13 @@ class PropertySerializer (serializers.ModelSerializer):
         fields = '__all__'
 
 
+class PropertyTableSerializer (serializers.ModelSerializer):
+
+    class Meta:
+        model = Property
+        fields = ['id', 'name', 'created_at',
+                  'moderation_status', 'total_property_cost']
+
 class ShoppingCartPropertySerializer(serializers.ModelSerializer):
 
     # images = MediaFilesSerializer(many=True)

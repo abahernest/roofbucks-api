@@ -7,7 +7,7 @@ from rest_framework.viewsets import ReadOnlyModelViewSet
 from django.db.models import Q
 
 from .serializers import (NewPropertySerializer, StayPeriodSerializer,
-                          PropertySerializer, ShoppingCartSerializer)
+                          PropertySerializer, ShoppingCartSerializer, PropertyTableSerializer)
 from authentication.permissions import IsAgent, IsCustomer
 from .models import Property, ShoppingCart
 from album.models import MediaFiles
@@ -118,7 +118,7 @@ class StayPeriodAPIView(views.APIView):
 class PropertyListView(ReadOnlyModelViewSet):
 
     filter_backends = [SearchFilter]
-    serializer_class = PropertySerializer
+    serializer_class = PropertyTableSerializer
     permission_classes = [permissions.IsAuthenticated, IsAgent]
     search_fields = ['name', 'id']
     pagination_class = CustomPagination
