@@ -3,6 +3,8 @@ from django.utils import timezone, dateparse
 dateparse.parse_date
 
 from .models import User, Company, Review
+from album.models import MediaAlbum, MediaFiles
+from album.serializers import MediaAlbumSerializer
 from properties.serializers import PropertySerializer
 
 class UpdateProfileSerializer (serializers.ModelSerializer):
@@ -28,28 +30,26 @@ class UpdateProfileSerializer (serializers.ModelSerializer):
         max_length=256, allow_empty_file=False, required = False)
     proof_of_address_document = serializers.FileField(
         max_length=256, allow_empty_file=False, validators=[validate_file_extension, validate_file_size])
-    identity_document_front = serializers.FileField(
-        max_length=256, allow_empty_file=False, validators=[validate_file_extension, validate_file_size])
-    identity_document_back = serializers.FileField(
-        max_length=256, allow_empty_file=False, validators=[validate_file_extension, validate_file_size])
+    identity_documents = serializers.ListField(
+        child=serializers.FileField(
+            allow_empty_file=False,
+            max_length=256,
+            validators=[validate_file_extension, validate_file_size]
+        ),
+        # write_only=True,
+        required=False,
+        min_length=2,
+        max_length=2
+    )
     identity_document_type = serializers.ChoiceField(IDENTITY_DOCUMENT_CHOICES, required=True)
-    date_of_birth       = serializers.DateField()
-    phone               = serializers.CharField(min_length=4)
-    firstname           = serializers.CharField(min_length=2, max_length=65)
-    lastname            = serializers.CharField(min_length=2, max_length=65)
-    city                = serializers.CharField(min_length=2, max_length=255, required=False)
-    address             = serializers.CharField(min_length=2)
-    country             = serializers.CharField(min_length=2, max_length=65)
-    identity_document_expiry_date = serializers.DateField()
-    identity_document_number      = serializers.CharField(min_length=2, max_length=255)
 
 
     class Meta:
         model = User
         fields = ['firstname', 'lastname', 'date_of_birth', 'email', 'address',
-                  'city', 'country', 'phone', 'identity_document_type', 'identity_document_front', 'identity_document_back',
+                  'city', 'country', 'phone', 'identity_document_type',
                   'identity_document_number', 'identity_document_expiry_date', 
-                  'display_photo', 'proof_of_address_document',
+                  'display_photo', 'proof_of_address_document', 'identity_documents'
                   ]
 
     def validate(self, attrs):
@@ -78,6 +78,29 @@ class UpdateProfileSerializer (serializers.ModelSerializer):
                 'identity_document_expiry_date should be a future date')
         
         return attrs
+
+    def update(self, instance, validated_data):
+
+        ## add identity documents to album
+        media_files_array, updatable_fields = [], {}
+
+        for key in validated_data:
+            if key == 'identity_documents':
+                if not instance.identity_document_album:
+
+                    identity_documents = validated_data.get('identity_documents')
+
+                    album = MediaAlbum.objects.create()
+                    for document in identity_documents:
+                        media_files_array.append(
+                            MediaFiles(album=album, document=document, media_type='DOCUMENT'))
+                    
+                    MediaFiles.objects.bulk_create(media_files_array)
+                    updatable_fields['identity_document_album'] = album
+            else:
+                updatable_fields[key] = validated_data.get(key)
+                            
+        return User.objects.filter(id=instance.id).update(**updatable_fields)
 
 
 class CreateCompanySerializer (serializers.ModelSerializer):

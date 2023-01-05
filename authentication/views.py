@@ -12,8 +12,7 @@ from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.http import HttpResponsePermanentRedirect, HttpResponse
 from django.db import transaction
 
-from users.models import User
-from .models import EmailVerification
+from users.models import User, EmailVerification
 from users.models import Company
 from .serializers import (
     EmailVerificationSerializer,
@@ -25,6 +24,7 @@ from .serializers import (
     CompanyVerificationSerializer,
     )
 from utils.email import SendMail
+from .permissions import IsAgent
 
 class SignupView(generics.GenericAPIView):
 
@@ -37,7 +37,7 @@ class SignupView(generics.GenericAPIView):
             serializer.is_valid(raise_exception=True)
 
             # check that user doesn't exist
-            users = User.objects.filter(phone=serializer.validated_data['email'])
+            users = User.objects.filter(email=serializer.validated_data['email'])
             if len(users) > 0 :
                 return Response({
                     "errors": ["User already exists"],
@@ -47,8 +47,6 @@ class SignupView(generics.GenericAPIView):
                 # pesist user in db
                 user = serializer.save()
                 
-                user_data = serializer.data
-
                 # generate email verification token
                 token = User.objects.make_random_password(length=6, allowed_chars=f'0123456789')
                 token_expiry = timezone.now() + timedelta(minutes=6)
@@ -157,7 +155,7 @@ class SetNewPasswordAPIView(generics.GenericAPIView):
 class VerifyCompanyAPIView(views.APIView):
 
     serializer_class = CompanyVerificationSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsAgent]
 
     def post(self,request):
 

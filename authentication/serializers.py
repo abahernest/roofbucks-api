@@ -7,9 +7,8 @@ from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.encoding import force_str, smart_str, smart_bytes, DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
-from users.models import User
+from users.models import User, EmailVerification
 from utils.identity_verification import VerifyCompany
-from .models import EmailVerification
 from users.models import Company
 
 class SignupSerializer (serializers.ModelSerializer):
@@ -23,7 +22,6 @@ class SignupSerializer (serializers.ModelSerializer):
     def validate (self, attrs):
         firstname = attrs.get('firstname', '')
         lastname = attrs.get('lastname', '')
-        email = attrs.get('email', '')
         password = attrs.get('password', '')
 
         if not firstname.isalpha():

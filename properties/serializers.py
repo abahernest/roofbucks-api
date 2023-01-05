@@ -3,25 +3,12 @@ from rest_framework import serializers
 from rest_framework.exceptions import ParseError
 
 
-from .models import Property, MediaAlbum, MediaFiles
+from .models import Property, ShoppingCart
+from album.models import MediaFiles, MediaAlbum
+from album.serializers import MediaAlbumSerializer, MediaFilesSerializer
 from utils.constants import (
     ALLOWABLE_NUMBER_OF_DOCUMENTS, ALLOWABLE_NUMBER_OF_IMAGES)
 
-
-class MediaFilesSerializer (serializers.ModelSerializer):
-
-    class Meta:
-        model = MediaFiles
-        fields = ['image', 'document', 'id']
-
-
-class MediaAlbumSerializer (serializers.ModelSerializer):
-
-    media = MediaFilesSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = MediaAlbum
-        fields = ['media']
 
 
 class NewPropertySerializer (serializers.ModelSerializer):
@@ -36,10 +23,7 @@ class NewPropertySerializer (serializers.ModelSerializer):
         if value.size > max_size:
             raise serializers.ValidationError('Maximum file size is 8MB')
 
-    image_album = MediaAlbumSerializer(read_only=True)
-    document_album = MediaAlbumSerializer(read_only=True)
 
-    agent = serializers.IntegerField(required=False) ## disabled it here so agent_id can be passed in the view.py file
     images = serializers.ListField(
         child= serializers.ImageField(
             allow_empty_file=False,
@@ -67,9 +51,14 @@ class NewPropertySerializer (serializers.ModelSerializer):
     class Meta:
         model = Property
         fields = '__all__'
-        extra_kwargs = {'images': {'write_only': True},
-                        'documents': {'write_only': True}
-                        }
+        fields = ['id','name', 'description', 'completion_status', 'apartment_type', 'address', 'city', 
+        'state','country', 'percentage_discount', 'promotion_closing_date', 'promotion_type', 'other_deals',
+        'number_of_bedrooms', 'number_of_toilets', 'benefits', 'amenities', 'ERF_size', 'dining_area', 'cross_streets',
+        'landmarks', 'floor_size', 'date_built', 'price_per_share', 'completion_cost', 'completion_date', 'zip_code',
+        'percentage_completed', 'total_number_of_shares', 'total_property_cost', 'expected_ROI', 'area_rent_rolls',
+        'scheduled_stays', 'images', 'documents', 'company', 'company_name', 'image_album', 'document_album'
+        ]
+        read_only_fields=['id','company','company_name', 'image_album', 'document_album' ]
 
     def validate(self, attrs):
         benefits = attrs.get('benefits','')
@@ -105,14 +94,11 @@ class NewPropertySerializer (serializers.ModelSerializer):
         return attrs
             
     def create(self, validated_data):
-
+        print('before',validated_data)
         media_files_array = []
 
         uploaded_images = validated_data.get('images')
         uploaded_documents = validated_data.get('documents')
-
-        if not (uploaded_documents or uploaded_images):
-            return Property.objects.create(**validated_data)
         
         image_album, document_album = None, None
 
@@ -132,12 +118,15 @@ class NewPropertySerializer (serializers.ModelSerializer):
                 media_files_array.append(
                     MediaFiles(album=document_album, document=document, media_type='DOCUMENT') )
 
-        MediaFiles.objects.bulk_create(media_files_array)
-
+        if len(media_files_array)>0:
+            MediaFiles.objects.bulk_create(media_files_array)
+        print('before1')
         scheduled_stays = validated_data.get('scheduled_stays')
         if scheduled_stays:
+            print('before2')
             validated_data['scheduled_stays'] = json.loads(scheduled_stays)
             
+        print(validated_data)
         property = Property.objects.create(
             **validated_data,
             image_album=image_album,
@@ -152,10 +141,10 @@ class NewPropertySerializer (serializers.ModelSerializer):
 
         if validated_data.get('images'):
             images = instance.get_images()
-            total_images_uploaded = len(images) if (images !=None) else 0
+            total_images_uploaded = len(images)
         if validated_data.get('documents'): 
             documents = instance.get_documents()
-            total_documents_uploaded = len(documents) if (documents !=None) else 0
+            total_documents_uploaded = len(documents)
 
         updatable_fields = {}
         for key in validated_data:
@@ -245,3 +234,24 @@ class PropertySerializer (serializers.ModelSerializer):
     class Meta:
         model = Property
         fields = '__all__'
+
+
+class ShoppingCartPropertySerializer(serializers.ModelSerializer):
+
+    # images = MediaFilesSerializer(many=True)
+    class Meta:
+        model = Property
+        fields = ['id', 'company_name', 'name',
+                  'price_per_share', 'total_number_of_shares']
+
+class ShoppingCartSerializer(serializers.ModelSerializer):
+
+    quantity = serializers.IntegerField()
+    property_id = serializers.CharField(max_length=255, write_only=True)
+
+    property = ShoppingCartPropertySerializer(read_only=True)
+    image = serializers.URLField(required=False)
+    class Meta:
+        model = ShoppingCart
+        fields = ['quantity', 'property', 'property_id', 'image']
+

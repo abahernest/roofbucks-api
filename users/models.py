@@ -4,6 +4,8 @@ from django.contrib.auth.models import AbstractBaseUser,BaseUserManager,Permissi
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.validators import MinLengthValidator
 
+from album.models import MediaAlbum, MediaFiles
+
 class UserManager(BaseUserManager):
 
     def create_user(self, firstname, lastname, email, password=None):
@@ -30,7 +32,6 @@ class UserManager(BaseUserManager):
         return user
 
 
-AUTH_PROVIDERS = {'facebook': 'facebook', 'google': 'google', 'email': 'email'}
 USER_ROLES = [
             ("CUSTOMER","Clients/Customers/Buyers"),
             ("AGENT","Real Estate Agent")
@@ -42,15 +43,6 @@ IDENTITY_DOCUMENT_CHOICES = [
             ]
 
 
-def front_identity_document_path_name(instance, filename):
-    dir_name = instance.id
-    return 'identity_document/%s/front/%s' % (dir_name,filename)
-
-
-def back_identity_document_path_name(instance, filename):
-    dir_name = instance.id
-    return 'identity_document/%s/back/%s' % (dir_name,filename)
-
 class User(AbstractBaseUser, PermissionsMixin):
     phone                       = models.CharField(max_length=255, unique=True, null=True, blank=True)
     firstname                   = models.CharField(max_length=255)
@@ -59,12 +51,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_verified                 = models.BooleanField(default=False)
     is_active                   = models.BooleanField(default=True)
     is_staff                    = models.BooleanField(default=False)
-    auth_provider               = models.CharField(
-        max_length=255, blank=False,
-        null=False, default=AUTH_PROVIDERS.get('email'))
 
-    nationality                 = models.CharField(max_length=255)
-    title                       = models.CharField(max_length=255)
+    nationality                 = models.CharField(max_length=255, null=True, blank=True)
+    title                       = models.CharField(max_length=255, null=True, blank=True)
     summary                     = models.TextField(default="")
 
     role                        = models.CharField(
@@ -72,7 +61,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         choices= USER_ROLES,
         default= USER_ROLES[0][0]
     )
-    secondary_phone             = models.CharField(max_length=255)
+    secondary_phone             = models.CharField(max_length=255, null=True, blank=True)
     date_of_birth               = models.DateField(null=True)
     address                     = models.TextField()
     city                        = models.CharField(max_length=255)
@@ -82,10 +71,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         choices= IDENTITY_DOCUMENT_CHOICES,
         default= IDENTITY_DOCUMENT_CHOICES[0][0]
     )
-    identity_document_front = models.FileField(
-        upload_to= front_identity_document_path_name, null=True)
-    identity_document_back = models.FileField(
-        upload_to= back_identity_document_path_name, null=True)
+    identity_document_album = models.ForeignKey(MediaAlbum, null=True, on_delete=models.CASCADE)
     identity_document_number    = models.CharField(max_length=65, null=True)
     identity_document_expiry_date   = models.DateField(null=True)
     display_photo               = models.ImageField(upload_to='display_photo/')
@@ -109,13 +95,22 @@ class User(AbstractBaseUser, PermissionsMixin):
         }
 
     def get_company(self):
-        company = Company.objects.filter(user=self.id).all()
+        company = Company.objects.filter(user=self).all()
 
         if len(company)<1:
             return None
         
         setattr(self,'company', company[0])
         return self.company
+
+    def get_identity_documents(self):
+        if not self.identity_document_album:
+            return None
+
+        documents = MediaFiles.objects.filter(album=self.identity_document_album).values('id', 'document').all()
+
+        setattr(self, 'identity_documents', documents)
+        return self.identity_documents
 
     class Meta:
         db_table = "Users"
@@ -146,6 +141,20 @@ class Company(models.Model):
     def get_reviews(self):
         setattr (self, 'reviews', Review.objects.filter(company=self))
         return self.reviews
+
+
+
+class EmailVerification(models.Model):
+    is_verified = models.BooleanField(default=False)
+    user = models.OneToOneField(to=User, on_delete=models.CASCADE)
+    token = models.CharField(null=False, blank=False,
+                             max_length=6, validators=[MinLengthValidator(6)])
+    token_expiry = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'EmailVerification'
 
 
 class Review(models.Model):

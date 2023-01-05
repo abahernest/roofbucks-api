@@ -9,13 +9,14 @@ from rest_framework.decorators import permission_classes
 from django.db.models import Avg, Count
 
 from .models import User, Company, Review
+from album.models import MediaFiles
 from properties.models import Property
 from .serializers import (UpdateProfileSerializer, CreateCompanySerializer,
                           AddBankInfoSerializer, BusinessProfileSerializer,
                           AgentListSerializer, ReviewsSerializer)
 from utils.pagination import CustomPagination
 from utils.constants import (NUMBER_OF_REVIEWS_TO_DISPLAY)
-from authentication.permissions import IsCustomer
+from authentication.permissions import IsCustomer, IsAgent
 
 
 class Profile(views.APIView):
@@ -32,9 +33,23 @@ class Profile(views.APIView):
             serializer = self.serializer_class(user, data=request.data)
             serializer.is_valid(raise_exception=True)
 
-            serializer.save()
+            with transaction.atomic():
+                serializer.save()
 
-            return Response(serializer.data, status=200)
+            user = User.objects.filter(id=user_id).values('id','firstname', 'lastname', 'date_of_birth', 'email', 'address',
+                                       'city', 'country', 'phone', 'identity_document_type',
+                                       'identity_document_number', 'identity_document_expiry_date',
+                                       'display_photo', 'proof_of_address_document', 'identity_document_album'
+                                       )[0]
+
+            documents = None                          
+            if user['identity_document_album']:
+                documents = MediaFiles.objects.filter(
+                    album=user['identity_document_album']).values('id', 'document')
+
+            user['identity_documents'] = documents
+            return Response(user, status=200)
+
         except Exception as e:
             return Response({'errors': e.args}, status=500)
 
@@ -131,7 +146,7 @@ class CreateCompany(views.APIView):
 class AddBankInformation(views.APIView):
 
     serializer_class = AddBankInfoSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsAgent]
 
     def patch(self, request):
 

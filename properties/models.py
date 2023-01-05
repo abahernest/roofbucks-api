@@ -1,7 +1,9 @@
 import uuid
 from django.db import models
-from users.models import User
+from users.models import User, Company
 from django.contrib.postgres.fields import ArrayField
+from album.models import MediaFiles, MediaAlbum
+
 
 MODERATION_STATUS_CHOICES = [
     ('PENDING', 'pending'),
@@ -12,57 +14,15 @@ COMPLETION_STATUS_CHOICES = [
     ('IN-PROGRESS', 'construction in progress'),
     ('COMPLETED', 'contruction completed'),
 ]
-MEDIA_TYPE_CHOICES = [
-    ('IMAGE', 'images'),
-    ('DOCUMENT', 'documents'),
-]
 
-
-class MediaAlbum(models.Model):
-    
-    class Meta:
-        db_table = 'MediaAlbums'
-
-def get_upload_path(instance, filename):
-    model = instance.album.__module__.split('.')[0]
-    name = model.replace(' ', '_')
-    return f'{name}/images/{filename}'
-
-
-def get_upload_path_for_document(instance, filename):
-    model = instance.album.__module__.split('.')[0]
-    name = model.replace(' ', '_')
-    return f'{name}/documents/{filename}'
-
-class MediaFiles(models.Model):
-    name = models.CharField(max_length=256, blank=True, null=True)
-    image = models.ImageField(
-        upload_to=get_upload_path, default='', null=True, blank=True)
-    document = models.FileField(upload_to=get_upload_path_for_document, null=True, blank=True)
-    media_type = models.CharField(
-        max_length=256,
-        choices= MEDIA_TYPE_CHOICES,
-        default= MEDIA_TYPE_CHOICES[0][0]
-        )
-    album = models.ForeignKey(
-        MediaAlbum, related_name='media', on_delete=models.CASCADE)
-
-    class Meta:
-        db_table = 'MediaFiles'
-
-    def delete_image_from_storage(self):
-        if self.image:
-            self.image.delete(save=False)
-
-    def delete_document_from_storage(self):
-        if self.document:
-            self.document.delete(save=False)
 
 
 class Property(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=256, blank=False)
     agent = models.ForeignKey(User, on_delete=models.CASCADE)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    company_name = models.CharField(max_length=256, blank=True)
     description = models.TextField(blank=True)
     moderation_status = models.CharField(
         choices=MODERATION_STATUS_CHOICES,
@@ -123,12 +83,25 @@ class Property(models.Model):
 
     def get_images(self):
         if not self.image_album:
-            return None
+            return []
         setattr(self,'images', MediaFiles.objects.filter(album=self.image_album))
         return self.images
 
     def get_documents(self):
         if not self.document_album:
-            return None
+            return []
         setattr(self, 'documents', MediaFiles.objects.filter(album=self.document_album))
         return self.documents
+
+
+class ShoppingCart(models.Model):
+
+    user = models.ForeignKey(to=User, on_delete=models.CASCADE)
+    property = models.ForeignKey(to=Property, on_delete=models.CASCADE)
+    quantity = models.IntegerField(null=False, default=1)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'ShoppingCart'

@@ -6,12 +6,14 @@ from rest_framework.filters import SearchFilter
 from rest_framework.viewsets import ReadOnlyModelViewSet
 from django.db.models import Q
 
-from .serializers import (NewPropertySerializer, StayPeriodSerializer, PropertySerializer)
-from authentication.permissions import IsAgent
-from .models import Property, MediaFiles, MediaAlbum
+from .serializers import (NewPropertySerializer, StayPeriodSerializer,
+                          PropertySerializer, ShoppingCartSerializer)
+from authentication.permissions import IsAgent, IsCustomer
+from .models import Property, ShoppingCart
+from album.models import MediaFiles
+from users.models import Company
 from utils.pagination import CustomPagination
-from utils.constants import (ALLOWABLE_NUMBER_OF_DOCUMENTS,
-                             ALLOWABLE_NUMBER_OF_IMAGES, MAXIMUM_SIMILAR_PROPERTIES)
+from utils.constants import (MAXIMUM_SIMILAR_PROPERTIES)
 
 class NewPropertyAPIView(views.APIView):
 
@@ -22,13 +24,17 @@ class NewPropertyAPIView(views.APIView):
     def post(self, request):
         
         try:
+            company = Company.objects.filter(user=request.user).first()
+            if not company:
+                return Response({'errors':['Complete business registration before uploading properties']}, status=403)
+
             serializer = self.serializer_class(data= request.data)
             serializer.is_valid(raise_exception=True)
-
-            serializer.validated_data['agent'] = request.user
+            
+            # serializer.validated_data['agent'] = request.user
 
             with transaction.atomic():
-                property=serializer.save()
+                property=serializer.save(agent = request.user, company_name=company.registered_name, company=company)
                 property = Property.objects.filter(id=property.id).values()[0]
                 
                 ## fetch media files
@@ -41,7 +47,6 @@ class NewPropertyAPIView(views.APIView):
 
         except Exception as e:
             return Response({'errors': e.args}, status=500)
-
 
 class StayPeriodAPIView(views.APIView):
 
@@ -181,8 +186,6 @@ class PropertyDetailView(views.APIView):
                 album=property.document_album).values('document')
 
             ## fetcy agent information and company information
-            company = property.agent.get_company()
-            company_name = company.registered_name if (company !=None) else None
 
             number_of_listed_properties= Property.objects.filter(
                 agent=property.agent, moderation_status='APPROVED').count()
@@ -191,11 +194,11 @@ class PropertyDetailView(views.APIView):
                 'id': property.agent_id,
                 'firstname': property.agent.firstname,
                 'lastname': property.agent.lastname,
-                'display_photo': property.agent.display_photo.url,
+                'display_photo': property.agent.display_photo.url if property.agent.display_photo else None,
                 'natinality': property.agent.nationality,
                 'email': property.agent.email,
                 'phone': property.agent.phone,
-                'agency': company_name,
+                'agency': property.company_name,
                 'listed_properties': number_of_listed_properties
             }
 
@@ -283,3 +286,63 @@ class RemoveMediaView(views.APIView):
         except Exception as e:
             return Response({'errors': e.args}, status=500)
     
+
+class ShoppingCartAPIView(views.APIView):
+
+    permission_classes = [permissions.IsAuthenticated, IsCustomer]
+    serializer_class = ShoppingCartSerializer
+
+    def get(self, request):
+
+        try:
+            cart_items = ShoppingCart.objects.select_related('property').filter(user=request.user)
+            
+            for item in cart_items:
+
+                if not item.property.image_album:
+                    setattr(item, 'image', None)
+                else:
+                    images = MediaFiles.objects.filter(album = item.property.image_album)
+                    if len(images)>0:
+                        setattr(item, 'image', images[0].image.url)
+                    else:
+                        setattr(item, 'image', None)
+
+            serializer = self.serializer_class(cart_items, many=True)
+            return Response(serializer.data, status=200)
+
+        except Exception as e:
+            return Response({'errors':e.args}, status=500)
+
+    def post(self, request):
+        
+        try:
+            serializer = self.serializer_class(data=request.data)
+            serializer.is_valid(raise_exception=True)
+
+            property = Property.objects.filter(id=serializer.validated_data['property_id']).first()
+            if not property:
+                return Response({'errors':['Property with ID not found']}, status=404)
+
+            cart = ShoppingCart.objects.filter(user=request.user, property=property).first()
+            if cart:
+                return Response({'errors': ['Property Already in shopping cart']})
+
+            if not property.total_number_of_shares:
+                return Response({'errors':['Agent is yet to specify available number of shares.']}, status=400)
+
+            if serializer.validated_data['quantity'] > property.total_number_of_shares:
+                return Response({'errors':[f'Quantity specified is more than available shares({property.total_number_of_shares})']})
+            
+            with transaction.atomic():
+                cart = serializer.save(user= request.user, property=property)
+            
+            # property.get_images()
+            # setattr(cart, "property", property)
+            # serializer = self.serializer_class(cart)
+            return Response({'message':'successful'}, status=200)
+
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)
+
+        
