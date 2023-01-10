@@ -94,7 +94,6 @@ class NewPropertySerializer (serializers.ModelSerializer):
         return attrs
             
     def create(self, validated_data):
-        print('before',validated_data)
         media_files_array = []
 
         uploaded_images = validated_data.get('images')
@@ -120,13 +119,11 @@ class NewPropertySerializer (serializers.ModelSerializer):
 
         if len(media_files_array)>0:
             MediaFiles.objects.bulk_create(media_files_array)
-        print('before1')
+
         scheduled_stays = validated_data.get('scheduled_stays')
         if scheduled_stays:
-            print('before2')
             validated_data['scheduled_stays'] = json.loads(scheduled_stays)
             
-        print(validated_data)
         property = Property.objects.create(
             **validated_data,
             image_album=image_album,
@@ -245,20 +242,17 @@ class PropertyTableSerializer (serializers.ModelSerializer):
 
 class ShoppingCartPropertySerializer(serializers.ModelSerializer):
 
-    # images = MediaFilesSerializer(many=True)
+    images = MediaFilesSerializer(many=True, required=False)
     class Meta:
         model = Property
         fields = ['id', 'company_name', 'name',
-                  'price_per_share', 'total_number_of_shares']
+                  'price_per_share', 'total_number_of_shares', 'images']
 
 class ShoppingCartSerializer(serializers.ModelSerializer):
 
     quantity = serializers.IntegerField()
-    property_id = serializers.CharField(max_length=255, write_only=True)
-
     property = ShoppingCartPropertySerializer(read_only=True)
-    image = serializers.URLField(required=False)
+
     class Meta:
         model = ShoppingCart
-        fields = ['quantity', 'property', 'property_id', 'image']
-
+        fields = ['quantity', 'property']

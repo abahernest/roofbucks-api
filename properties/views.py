@@ -299,14 +299,13 @@ class ShoppingCartAPIView(views.APIView):
             
             for item in cart_items:
 
-                if not item.property.image_album:
-                    setattr(item, 'image', None)
+                images = MediaFiles.objects.filter(album = item.property.image_album)
+                if len(images)>0:
+                    property = item.property
+                    setattr(property, 'images', images)
                 else:
-                    images = MediaFiles.objects.filter(album = item.property.image_album)
-                    if len(images)>0:
-                        setattr(item, 'image', images[0].image.url)
-                    else:
-                        setattr(item, 'image', None)
+                    property = item.property
+                    setattr(property, 'images', None)
 
             serializer = self.serializer_class(cart_items, many=True)
             return Response(serializer.data, status=200)
@@ -345,4 +344,3 @@ class ShoppingCartAPIView(views.APIView):
         except Exception as e:
             return Response({'errors': e.args}, status=500)
 
-        
