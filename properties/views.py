@@ -8,7 +8,7 @@ from django.db.models import Q
 
 from .serializers import (NewPropertySerializer, StayPeriodSerializer,
                           PropertySerializer, ShoppingCartSerializer, PropertyTableSerializer, 
-                          SimilarPropertyListSerializer)
+                          SimilarPropertyListSerializer, RemoveShopingCartItemSerializer)
 from authentication.permissions import IsAgent, IsCustomer
 from .models import Property, ShoppingCart
 from album.models import MediaFiles
@@ -365,3 +365,50 @@ class ShoppingCartAPIView(views.APIView):
         except Exception as e:
             return Response({'errors': e.args}, status=500)
 
+
+    def delete(self, request):
+
+        try:
+            serializer = RemoveShopingCartItemSerializer(data= request.data)
+            serializer.is_valid(raise_exception=True)
+
+            property_id = serializer.validated_data.get('property_id')
+            cart_item = ShoppingCart.objects.filter(user=request.user, property_id=property_id).first()
+            
+            if not cart_item:
+                return Response({'errors':['Item not found in cart for this user']}, status=400)
+
+            with transaction.atomic():
+                response = cart_item.delete()
+                print(response)
+
+            return Response({'message':'successful'},status=200)
+
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)
+
+    def patch(self, request):
+
+        try:
+            serializer = self.serializer_class(data=request.data)
+            serializer.is_valid(raise_exception=True)
+
+            property_id = serializer.validated_data.get('property_id')
+            quantity = serializer.validated_data.get('quantity')
+
+            cart_item = ShoppingCart.objects.filter(
+                user=request.user, property_id=property_id).first()
+
+            if not cart_item:
+                return Response({'errors': ['Item not found in cart for this user']}, status=400)
+
+            with transaction.atomic():
+                cart_item.quantity = quantity
+                cart_item.save()
+
+            serializer = self.serializer_class(cart_item)
+
+            return Response(serializer.data, status=200)
+
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)

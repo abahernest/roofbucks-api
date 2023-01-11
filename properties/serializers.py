@@ -275,3 +275,8 @@ class ShoppingCartSerializer(serializers.ModelSerializer):
     class Meta:
         model = ShoppingCart
         fields = ['quantity', 'property', 'property_id', 'created_at']
+
+
+class RemoveShopingCartItemSerializer(serializers.Serializer):
+
+    property_id = serializers.UUIDField(required=True)
