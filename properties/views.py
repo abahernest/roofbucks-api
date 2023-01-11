@@ -7,7 +7,8 @@ from rest_framework.viewsets import ReadOnlyModelViewSet
 from django.db.models import Q
 
 from .serializers import (NewPropertySerializer, StayPeriodSerializer,
-                          PropertySerializer, ShoppingCartSerializer, PropertyTableSerializer)
+                          PropertySerializer, ShoppingCartSerializer, PropertyTableSerializer, 
+                          SimilarPropertyListSerializer)
 from authentication.permissions import IsAgent, IsCustomer
 from .models import Property, ShoppingCart
 from album.models import MediaFiles
@@ -132,23 +133,55 @@ class PropertyListView(ReadOnlyModelViewSet):
 
 class SimilarPropertyView(views.APIView):
 
-    serializer_class = PropertySerializer
+    serializer_class = SimilarPropertyListSerializer
     pagination_class = CustomPagination
+
+
+    def group_by_propertyID(self, cursor):
+        "Return all rows from a cursor as a dict"
+        ## add extra column to store array of images
+        columns = [col[0] for col in cursor.description] + ['images']
+        
+        hashMap = {}
+        output = []
+        for row in cursor.fetchall():
+            ## Break condition
+            if len(output) > MAXIMUM_SIMILAR_PROPERTIES:
+                break
+
+            property_id = row[0]
+            image = row[-1]
+
+            if property_id not in hashMap:
+    
+                row += ( [image], ) ##concatenate tuple
+
+                output.append(dict(zip(columns, row)))
+                ## delete image property from output item
+                del(output[-1]['image'])
+                hashMap[property_id] = {'index':len(output)-1}
+            else:
+                index = hashMap[property_id]['index']
+                images = output[index]['images'] 
+                images.append(image)
+
+        return output
 
     def get(self, request, property_id):
         try:
             properties = Property.objects.filter(id=property_id)
             if len(properties) < 1:
                 return Response({'errors': ['No property with that ID']}, status=400)
-            
+
             properties = Property.objects.filter(
-                ~Q(id=property_id), 
-                name__icontains = properties[0].name
-                )[:MAXIMUM_SIMILAR_PROPERTIES]
+                ~Q(id=property_id),
+                name__icontains=properties[0].name
+            )[:MAXIMUM_SIMILAR_PROPERTIES]
 
             for property in properties:
-                property.get_images()
-                property.get_documents()
+                out = property.get_images()
+                setattr(property, 'images', out)
+                print(property.images)
 
             serializer = self.serializer_class(properties, many=True)
 
@@ -295,18 +328,8 @@ class ShoppingCartAPIView(views.APIView):
     def get(self, request):
 
         try:
-            cart_items = ShoppingCart.objects.select_related('property').filter(user=request.user)
+            cart_items = ShoppingCart.objects.select_related('property').order_by('-created_at').filter(user=request.user)
             
-            for item in cart_items:
-
-                images = MediaFiles.objects.filter(album = item.property.image_album)
-                if len(images)>0:
-                    property = item.property
-                    setattr(property, 'images', images)
-                else:
-                    property = item.property
-                    setattr(property, 'images', None)
-
             serializer = self.serializer_class(cart_items, many=True)
             return Response(serializer.data, status=200)
 
@@ -336,10 +359,8 @@ class ShoppingCartAPIView(views.APIView):
             with transaction.atomic():
                 cart = serializer.save(user= request.user, property=property)
             
-            # property.get_images()
-            # setattr(cart, "property", property)
-            # serializer = self.serializer_class(cart)
-            return Response({'message':'successful'}, status=200)
+            serializer = self.serializer_class(cart)
+            return Response(serializer.data, status=200)
 
         except Exception as e:
             return Response({'errors': e.args}, status=500)

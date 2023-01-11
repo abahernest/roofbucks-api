@@ -1,5 +1,6 @@
 import uuid
 from django.db import models
+from django.utils import timezone
 from users.models import User, Company
 from django.contrib.postgres.fields import ArrayField
 from album.models import MediaFiles, MediaAlbum
@@ -16,6 +17,11 @@ COMPLETION_STATUS_CHOICES = [
 ]
 
 
+def get_default_image_upload_path(instance, filename):
+    model = instance.album.__module__.split('.')[0]
+    name = model.replace(' ', '_')
+    date = str(timezone.now().date())
+    return f'{name}/default_images/{date}/{filename}'
 
 class Property(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -59,6 +65,7 @@ class Property(models.Model):
     date_built = models.DateField(null=True)
     # listing_date = models.DateField(null=True)
     # additional_details = models.JSONField(default=dict)
+    default_image = models.ImageField(upload_to=get_default_image_upload_path, null=True)
     price_per_share = models.PositiveBigIntegerField(null=True)
     completion_cost = models.PositiveBigIntegerField(null=True)
     completion_date = models.DateField(null=True)

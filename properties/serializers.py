@@ -109,6 +109,9 @@ class NewPropertySerializer (serializers.ModelSerializer):
                 media_files_array.append(
                     MediaFiles(album=image_album, image=image, media_type='IMAGE') )
 
+            ## select one image from uploaded_images as default image
+            validated_data['default_image']=uploaded_images[0]
+
         if uploaded_documents:
             validated_data.pop('documents')
             document_album = MediaAlbum.objects.create()
@@ -160,8 +163,10 @@ class NewPropertySerializer (serializers.ModelSerializer):
                 uploaded_images = validated_data.get('images')
                 if total_images_uploaded > ALLOWABLE_NUMBER_OF_IMAGES:
                     raise ParseError('Exceeded alloted number of images. Delete existing images for this Property')
+                    
                 elif total_images_uploaded == 0:
                     image_album = MediaAlbum.objects.create()
+
                 elif remaining_number_of_images < len(uploaded_images):
                     raise ParseError(
                         f'Only {remaining_number_of_images} slots left for images. Delete existing images for this Property to obtain more slots')
@@ -172,6 +177,10 @@ class NewPropertySerializer (serializers.ModelSerializer):
 
                 MediaFiles.objects.bulk_create(media_files_array)
                 updatable_fields['image_album'] = image_album
+
+                # select one image as default_image if none
+                if not instance.default_image:
+                    updatable_fields['default_image'] = uploaded_images[0]
 
             elif key == 'documents':
                 media_files_array = []
@@ -233,6 +242,16 @@ class PropertySerializer (serializers.ModelSerializer):
         fields = '__all__'
 
 
+class SimilarPropertyListSerializer (serializers.ModelSerializer):
+
+    images = MediaFilesSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Property
+        fields = ['id', 'name', 'company_name', 'address', 'city',
+                  'state', 'country', 'number_of_bedrooms', 'images',
+                  'number_of_toilets', 'percentage_discount', 'total_property_cost']
+
 class PropertyTableSerializer (serializers.ModelSerializer):
 
     class Meta:
@@ -242,17 +261,17 @@ class PropertyTableSerializer (serializers.ModelSerializer):
 
 class ShoppingCartPropertySerializer(serializers.ModelSerializer):
 
-    images = MediaFilesSerializer(many=True, required=False)
     class Meta:
         model = Property
         fields = ['id', 'company_name', 'name',
-                  'price_per_share', 'total_number_of_shares', 'images']
+                  'price_per_share', 'total_number_of_shares', 'default_image']
 
 class ShoppingCartSerializer(serializers.ModelSerializer):
 
     quantity = serializers.IntegerField()
     property = ShoppingCartPropertySerializer(read_only=True)
+    property_id = serializers.UUIDField(write_only=True)
 
     class Meta:
         model = ShoppingCart
-        fields = ['quantity', 'property']
+        fields = ['quantity', 'property', 'property_id', 'created_at']
