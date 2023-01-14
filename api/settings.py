@@ -32,7 +32,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY', default='your secret key')
 DEBUG = os.environ.get('DEBUG', True)
 # DEBUG = False
 
-ALLOWED_HOSTS = ["roofbucks-api.herokuapp.com", 'localhost']
+ALLOWED_HOSTS = ["roofbucks-api.herokuapp.com", '*']
 
 
 CSRF_COOKIE_SECURE = True if DEBUG is False else False
