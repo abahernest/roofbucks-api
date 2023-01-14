@@ -112,3 +112,35 @@ class ShoppingCart(models.Model):
 
     class Meta:
         db_table = 'ShoppingCart'
+
+
+CHOICES_FOR_INSPECTION_STATUS = [
+    ('PENDING', 'Agent Is yet to accept request'),
+    ('CANCELLED', 'Client cancelled visitation request'),
+    ('REJECTED', 'Agent rejected visitation schedule'),
+    ('ACCEPTED', 'Agent accepted visitation schedule')
+]
+
+class PropertyInspection(models.Model):
+    property = models.ForeignKey(Property, on_delete=models.CASCADE)
+    agent   = models.ForeignKey(User, on_delete=models.CASCADE, related_name='agent')
+    agent_phone = models.CharField(max_length=256, blank=True, null=True)
+    agent_firstname = models.CharField(max_length=256, blank=True, null=True)
+    agent_lastname = models.CharField(max_length=256, blank=True, null=True)
+    company_name = models.CharField(max_length=256, blank=True, null=True)
+    client   = models.ForeignKey(User, on_delete=models.CASCADE, related_name='client')
+    client_phone = models.CharField(max_length=256, blank=True, null=True)
+    client_firstname = models.CharField(max_length=256, blank=True, null = True)
+    client_lastname = models.CharField(max_length=256, blank=True, null=True)
+    inspection_date = models.DateField()
+    status = models.CharField(
+        max_length=256, 
+        choices=CHOICES_FOR_INSPECTION_STATUS, 
+        default=CHOICES_FOR_INSPECTION_STATUS[0][0])
+
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'PropertyInspections'

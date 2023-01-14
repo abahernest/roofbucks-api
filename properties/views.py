@@ -8,9 +8,10 @@ from django.db.models import Q
 
 from .serializers import (NewPropertySerializer, StayPeriodSerializer,
                           PropertySerializer, ShoppingCartSerializer, PropertyTableSerializer, 
-                          SimilarPropertyListSerializer, RemoveShopingCartItemSerializer)
+                          SimilarPropertyListSerializer, RemoveShopingCartItemSerializer,
+                          ScheduleSiteInspectionSerializer, PropertyInspectionSerializer)
 from authentication.permissions import IsAgent, IsCustomer
-from .models import Property, ShoppingCart
+from .models import Property, ShoppingCart, PropertyInspection
 from album.models import MediaFiles
 from users.models import Company
 from utils.pagination import CustomPagination
@@ -410,5 +411,144 @@ class ShoppingCartAPIView(views.APIView):
 
             return Response(serializer.data, status=200)
 
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)
+
+
+class CreateAndListSiteVisitAPIView (views.APIView):
+
+    serializer_class = PropertyInspectionSerializer
+    permission_classes = [permissions.IsAuthenticated, IsCustomer]
+
+    def post(self, request):
+        try:
+            serializer = ScheduleSiteInspectionSerializer(data = request.data)
+            serializer.is_valid(raise_exception=True)
+
+            with transaction.atomic():
+                propertyInspectionObj = {}
+                property_id = serializer.validated_data.get('property_id')
+                inspection_date = serializer.validated_data.get('inspection_date')
+
+                ## check for existence of property
+                property = Property.objects.filter(id = property_id).first()
+                if not property:
+                    return Response({'errors': ['No proeprty with that ID']}, status = 400)
+                
+
+                propertyInspectionObj = {
+                    'property': property,
+                    'company_name': property.company_name,
+                    'agent': property.agent,
+                    'agent_phone': property.agent.phone,
+                    'agent_firstname': property.agent.firstname,
+                    'agent_lastname': property.agent.lastname,
+                    'client': request.user,
+                    'client_firstname': request.user.firstname,
+                    'client_lastname': request.user.lastname,
+                    'inspection_date': inspection_date,
+                } 
+
+                inspection_detail = PropertyInspection.objects.create(**propertyInspectionObj)
+                serializer = self.serializer_class(inspection_detail)
+
+            return Response(serializer.data, status=200)
+
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)
+    
+    def get(self, request):
+        try:
+
+            properties = PropertyInspection.objects.filter(client = request.user).all()
+            serializer = self.serializer_class(properties, many=True)
+
+            return Response(serializer.data, status = 200)
+
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)
+
+
+class CancelSiteVisitAPIView (views.APIView):
+
+    serializer_class = PropertyInspectionSerializer
+    permission_classes = [permissions.IsAuthenticated, IsCustomer]
+
+    def patch(self, request, visitation_id):
+        try:
+
+            inspectionObj = PropertyInspection.objects.filter(id= visitation_id, client = request.user).first()
+            if not inspectionObj:
+                return Response({'errors':['No record with this inspection Id']}, status=400)
+
+            if inspectionObj.status != 'PENDING':
+                return Response({'errors': ['Can only cancel PENDING inspection ID']}, status=400)
+
+            with transaction.atomic():
+                inspectionObj.status = 'CANCELLED'
+                inspectionObj.save()
+
+            serializer = self.serializer_class(inspectionObj)
+
+            return Response(serializer.data, status=200)
+
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)
+
+
+class AcceptAndRejectInspectionAPIView(views.APIView):
+
+    serializer_class = PropertyInspectionSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAgent]
+
+    def patch(self, request, visitation_id, agent_action):
+        try:
+
+            global_status = None
+            if agent_action.lower() == 'accept':
+                global_status = "ACCEPTED"
+            elif agent_action.lower() == 'reject':
+                global_status = 'REJECTED'
+            else:
+                return Response({'errors':['agent_action can only be "accept" or "reject"']}, status=400)
+
+            inspectionObj = PropertyInspection.objects.filter(id=visitation_id, agent=request.user).first()
+            if not inspectionObj:
+                return Response({'errors': ['No record with this inspection Id']}, status=400)
+
+            if inspectionObj.status != 'PENDING':
+                return Response({'errors': [f'Can only {agent_action} PENDING inspection']}, status=400)
+
+            with transaction.atomic():
+                inspectionObj.status = global_status
+                inspectionObj.save()
+
+            serializer = self.serializer_class(inspectionObj)
+
+            return Response(serializer.data, status=200)
+
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)
+
+class AgentPropertyInspectionsAPIView(views.APIView):
+
+    serializer_class = PropertyInspectionSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAgent]
+
+
+    def get(self, request):
+        try:
+            query = {"agent":request.user}
+            status = request.GET.get('status')
+
+            if (status in ['pending', 'accepted', 'rejected']):
+                query['status'] = status.upper()
+            
+            inspectionObjs = PropertyInspection.objects.filter(**query)
+
+            serializer = self.serializer_class(inspectionObjs, many=True)
+
+            return Response(serializer.data, status=200)
+            
         except Exception as e:
             return Response({'errors': e.args}, status=500)

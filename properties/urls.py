@@ -2,7 +2,10 @@ from django.urls import path
 from .views import (NewPropertyAPIView, StayPeriodAPIView,
                     PropertyListView, PropertyDetailView, 
                     UpdatePropertyAPIView, RemoveMediaView, SimilarPropertyView,
-                    ShoppingCartAPIView)
+                    ShoppingCartAPIView, CreateAndListSiteVisitAPIView,
+                    AcceptAndRejectInspectionAPIView,
+                    CancelSiteVisitAPIView, AgentPropertyInspectionsAPIView
+                    )
 
 urlpatterns = [
     path(
@@ -19,5 +22,13 @@ urlpatterns = [
     path('similar_properties/<property_id>/',
          SimilarPropertyView.as_view(), name='single_property'),
     path('shopping_cart/',
-         ShoppingCartAPIView.as_view(), name='shopping_cart')
+         ShoppingCartAPIView.as_view(), name='shopping_cart'),
+    path('site_visit/',
+         CreateAndListSiteVisitAPIView.as_view(), name='schedule_site_visit'),
+    path('agent_site_visit/',
+         AgentPropertyInspectionsAPIView.as_view(), name='agent_property_inspections'),
+    path('agent_site_visit/<visitation_id>/<agent_action>/',
+         AcceptAndRejectInspectionAPIView.as_view(), name='accept_and_reject_inspection'),
+    path('site_visit/<visitation_id>/cancel/',
+         CancelSiteVisitAPIView.as_view(), name='cancel_site_inspection')
 ]

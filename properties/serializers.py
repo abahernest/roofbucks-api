@@ -3,11 +3,12 @@ from rest_framework import serializers
 from rest_framework.exceptions import ParseError
 
 
-from .models import Property, ShoppingCart
+from .models import Property, ShoppingCart, PropertyInspection
 from album.models import MediaFiles, MediaAlbum
 from album.serializers import MediaAlbumSerializer, MediaFilesSerializer
 from utils.constants import (
     ALLOWABLE_NUMBER_OF_DOCUMENTS, ALLOWABLE_NUMBER_OF_IMAGES)
+from utils.date import (greater_than_today)
 
 
 
@@ -280,3 +281,22 @@ class ShoppingCartSerializer(serializers.ModelSerializer):
 class RemoveShopingCartItemSerializer(serializers.Serializer):
 
     property_id = serializers.UUIDField(required=True)
+
+class ScheduleSiteInspectionSerializer(serializers.Serializer):
+
+    property_id = serializers.UUIDField()
+    inspection_date = serializers.DateField()
+
+    def validate(self, attrs):
+        inspection_date = attrs.get('inspection_date')
+
+        if not greater_than_today (inspection_date) :
+            raise ParseError('inspection_date must be a future date.')
+
+        return attrs
+
+class PropertyInspectionSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = PropertyInspection
+        fields = '__all__'
