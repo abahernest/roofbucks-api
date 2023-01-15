@@ -23,7 +23,8 @@ urlpatterns = [
 
     path('api/v1/auth/', include('authentication.urls')),
     path('api/v1/user/', include('users.urls')),
-    path('api/v1/properties/', include('properties.urls'))
+    path('api/v1/properties/', include('properties.urls')),
+    path('api/v1/transactions/', include('transactions.urls'))
 
 ]
 

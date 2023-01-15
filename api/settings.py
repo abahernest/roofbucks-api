@@ -56,7 +56,8 @@ INSTALLED_APPS = [
     'authentication',
     'album',
     'users',
-    'properties'
+    'properties',
+    'transactions'
 ]
 
 MIDDLEWARE = [

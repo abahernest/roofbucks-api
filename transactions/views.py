@@ -1,0 +1,95 @@
+from rest_framework import (views, permissions)
+from rest_framework.response import Response
+from django.db import transaction
+
+
+from .serializers import (
+    AgentTransactionLogsListSerializer, 
+    TransactionLogSerializer)
+from authentication.permissions import IsAgent, IsCustomer
+from .models import TransactionLog
+from properties.models import ShoppingCart
+from utils.paystack import chargeCard, generateTransactionReference
+
+class AgentsTransactionLogsListView(views.APIView):
+
+    serializer_class = AgentTransactionLogsListSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAgent]
+
+    def get(self,request):
+        try:
+
+            tx_logs = TransactionLog.objects.filter(agent=request.user).order_by("-created_at")
+
+            serializer = self.serializer_class(tx_logs, many=True)
+
+            return Response(serializer.data, status=200)
+
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)
+
+
+class ClientTransactionLogsListView(views.APIView):
+
+    serializer_class = AgentTransactionLogsListSerializer
+    permission_classes = [permissions.IsAuthenticated, IsCustomer]
+
+    def get(self, request):
+        try:
+
+            tx_logs = TransactionLog.objects.filter(client=request.user).order_by("-created_at")
+
+            serializer = self.serializer_class(tx_logs, many=True)
+
+            return Response(serializer.data, status=200)
+
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)
+
+
+class PurchasePropertiesAPIView(views.APIView):
+
+    serializer_class = TransactionLogSerializer
+    permission_classes = [permissions.IsAuthenticated, IsCustomer]
+
+    def post(self, request):
+        try:
+
+            with transaction.atomic():
+                bulkLogs = []
+                cart = ShoppingCart.objects.filter(user=request.user)
+
+                for item in cart:
+                    
+                    property = item.property
+
+                    ## generate referenceId
+                    referenceId = generateTransactionReference()
+
+                    bulkLogs.append(
+                        TransactionLog(**{
+                            "property_name": property.name,
+                            "reference": referenceId,
+                            "property": property,
+                            "client": request.user,
+                            "agent": property.agent,
+                            "number_of_shares": item.quantity,
+                            "amount": property.price_per_share,
+                        }))
+
+                    ## delete item from cart
+                    item.delete()
+
+                    # Queue Transaction
+                    payment_service_response = chargeCard()
+                
+                transactionLogs = TransactionLog.objects.bulk_create(bulkLogs)
+
+                serializer = self.serializer_class(transactionLogs, many=True)
+
+            return Response(serializer.data, status=200)
+
+        except Exception as e:
+            return Response({'errors': e.args}, status=500)
+
+
