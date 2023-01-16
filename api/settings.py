@@ -57,7 +57,8 @@ INSTALLED_APPS = [
     'album',
     'users',
     'properties',
-    'transactions'
+    'transactions',
+    'notifications'
 ]
 
 MIDDLEWARE = [

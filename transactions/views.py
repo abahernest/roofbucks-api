@@ -10,6 +10,7 @@ from authentication.permissions import IsAgent, IsCustomer
 from .models import TransactionLog
 from properties.models import ShoppingCart
 from utils.paystack import chargeCard, generateTransactionReference
+from notifications.models import Notifications
 
 class AgentsTransactionLogsListView(views.APIView):
 
@@ -56,7 +57,7 @@ class PurchasePropertiesAPIView(views.APIView):
         try:
 
             with transaction.atomic():
-                bulkLogs = []
+                bulkLogs, notificationsList = [], []
                 cart = ShoppingCart.objects.filter(user=request.user)
 
                 for item in cart:
@@ -66,6 +67,13 @@ class PurchasePropertiesAPIView(views.APIView):
                     ## generate referenceId
                     referenceId = generateTransactionReference()
 
+                    ## delete item from cart
+                    item.delete()
+
+                    # Queue Transaction
+                    payment_service_response = chargeCard()
+
+                    ## create Transaction Logs
                     bulkLogs.append(
                         TransactionLog(**{
                             "property_name": property.name,
@@ -75,15 +83,21 @@ class PurchasePropertiesAPIView(views.APIView):
                             "agent": property.agent,
                             "number_of_shares": item.quantity,
                             "amount": property.price_per_share,
+                            **payment_service_response
                         }))
 
-                    ## delete item from cart
-                    item.delete()
-
-                    # Queue Transaction
-                    payment_service_response = chargeCard()
+                    ## save notifications object
+                    payment_status = payment_service_response.get('status')
+                    notification_message = f'{payment_status} transaction for property {property.id}'
+                    notificationsList.extend([
+                        {"user": request.user, "message": notification_message}, ##notify client
+                        {"user": property.agent, "message": notification_message} ##notify agent
+                        ])
                 
                 transactionLogs = TransactionLog.objects.bulk_create(bulkLogs)
+
+                ## send notifications
+                Notifications.new_bulk_entry(notificationsList)
 
                 serializer = self.serializer_class(transactionLogs, many=True)
 

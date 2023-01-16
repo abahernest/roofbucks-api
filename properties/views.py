@@ -14,8 +14,10 @@ from authentication.permissions import IsAgent, IsCustomer
 from .models import Property, ShoppingCart, PropertyInspection
 from album.models import MediaFiles
 from users.models import Company
+from notifications.models import Notifications
 from utils.pagination import CustomPagination
 from utils.constants import (MAXIMUM_SIMILAR_PROPERTIES)
+from utils.date import (convert_datetime_to_readable_date)
 
 class NewPropertyAPIView(views.APIView):
 
@@ -45,9 +47,14 @@ class NewPropertyAPIView(views.APIView):
                 property['documents'] = MediaFiles.objects.filter(
                     album=property['document_album_id']).values('document','id')
 
+                ## notify agent
+                notificationMessage = f'New Property Added. {property["name"]}'
+                Notifications.new_entry(user= request.user, message=notificationMessage)
+            
             return Response(property, status=200)
 
         except Exception as e:
+            print(e)
             return Response({'errors': e.args}, status=500)
 
 class StayPeriodAPIView(views.APIView):
@@ -452,6 +459,16 @@ class CreateAndListSiteVisitAPIView (views.APIView):
                 inspection_detail = PropertyInspection.objects.create(**propertyInspectionObj)
                 serializer = self.serializer_class(inspection_detail)
 
+                ##send notifications
+                formatted_datetime = convert_datetime_to_readable_date(inspection_date)
+                client_notification_message = f'Scheduled Site Visit for {property.company_name} at {formatted_datetime}'
+                agent_notification_message = f'Scheduled Site Visit for {property.name} with ID {property.id} at {formatted_datetime}'
+
+                Notifications.new_bulk_entry([
+                    {"user": request.user, "message": client_notification_message}, ## notify client
+                    {"user": property.agent, "message": agent_notification_message} ## notify agent
+                ])
+
             return Response(serializer.data, status=200)
 
         except Exception as e:
@@ -488,6 +505,16 @@ class CancelSiteVisitAPIView (views.APIView):
                 inspectionObj.status = 'CANCELLED'
                 inspectionObj.save()
 
+                ## send notifications
+                client_notification_message = f'Cancelled Site Visit for {inspectionObj.property.company_name}'
+                agent_notification_message = f'{inspectionObj.client_firstname} {inspectionObj.client_lastname} cancelled site visit for {inspectionObj.property.name} with ID {inspectionObj.property.id}'
+
+                Notifications.new_bulk_entry([
+                    {"user": request.user, "message": client_notification_message}, ## notify client
+                    {"user": inspectionObj.property.agent, "message": agent_notification_message} ## notify agent
+                ])
+
+
             serializer = self.serializer_class(inspectionObj)
 
             return Response(serializer.data, status=200)
@@ -522,6 +549,16 @@ class AcceptAndRejectInspectionAPIView(views.APIView):
             with transaction.atomic():
                 inspectionObj.status = global_status
                 inspectionObj.save()
+
+                ## send notifications
+                client_notification_message = f'Site Visit for {inspectionObj.property.company_name} has been {global_status.lower()} '
+                agent_notification_message = f'{global_status.capitalize()} site visit for {inspectionObj.property.name} with ID {inspectionObj.property.id}'
+
+                Notifications.new_bulk_entry([
+                    {"user": request.user, "message": client_notification_message}, ## notify client
+                    {"user": inspectionObj.property.agent, "message": agent_notification_message} ## notify agent
+                ])
+
 
             serializer = self.serializer_class(inspectionObj)
 

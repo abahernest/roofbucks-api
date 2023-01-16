@@ -127,7 +127,7 @@ class NewPropertySerializer (serializers.ModelSerializer):
         scheduled_stays = validated_data.get('scheduled_stays')
         if scheduled_stays:
             validated_data['scheduled_stays'] = json.loads(scheduled_stays)
-            
+        
         property = Property.objects.create(
             **validated_data,
             image_album=image_album,
@@ -285,7 +285,7 @@ class RemoveShopingCartItemSerializer(serializers.Serializer):
 class ScheduleSiteInspectionSerializer(serializers.Serializer):
 
     property_id = serializers.UUIDField()
-    inspection_date = serializers.DateField()
+    inspection_date = serializers.DateTimeField()
 
     def validate(self, attrs):
         inspection_date = attrs.get('inspection_date')

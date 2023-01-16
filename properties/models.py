@@ -18,8 +18,7 @@ COMPLETION_STATUS_CHOICES = [
 
 
 def get_default_image_upload_path(instance, filename):
-    model = instance.album.__module__.split('.')[0]
-    name = model.replace(' ', '_')
+    name = "properties"
     date = str(timezone.now().date())
     return f'{name}/default_images/{date}/{filename}'
 
@@ -132,7 +131,7 @@ class PropertyInspection(models.Model):
     client_phone = models.CharField(max_length=256, blank=True, null=True)
     client_firstname = models.CharField(max_length=256, blank=True, null = True)
     client_lastname = models.CharField(max_length=256, blank=True, null=True)
-    inspection_date = models.DateField()
+    inspection_date = models.DateTimeField()
     status = models.CharField(
         max_length=256, 
         choices=CHOICES_FOR_INSPECTION_STATUS, 
