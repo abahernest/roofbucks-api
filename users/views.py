@@ -26,45 +26,40 @@ class Profile(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def patch(self,request):
-        try:
-            user_id = request.user.id
-            user = User.objects.get(id=user_id)
 
-            serializer = self.serializer_class(user, data=request.data)
-            serializer.is_valid(raise_exception=True)
+        user_id = request.user.id
+        user = User.objects.get(id=user_id)
 
-            with transaction.atomic():
-                serializer.save()
+        serializer = self.serializer_class(user, data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-            user = User.objects.filter(id=user_id).values('id','firstname', 'lastname', 'date_of_birth', 'email', 'address',
-                                       'city', 'country', 'phone', 'identity_document_type',
-                                       'identity_document_number', 'identity_document_expiry_date',
-                                       'display_photo', 'proof_of_address_document', 'identity_document_album'
-                                       )[0]
+        with transaction.atomic():
+            serializer.save()
 
-            documents = None                          
-            if user['identity_document_album']:
-                documents = MediaFiles.objects.filter(
-                    album=user['identity_document_album']).values('id', 'document')
+        user = User.objects.filter(id=user_id).values('id','firstname', 'lastname', 'date_of_birth', 'email', 'address',
+                                   'city', 'country', 'phone', 'identity_document_type',
+                                   'identity_document_number', 'identity_document_expiry_date',
+                                   'display_photo', 'proof_of_address_document', 'identity_document_album'
+                                   )[0]
 
-            user['identity_documents'] = documents
-            return Response(user, status=200)
+        documents = None
+        if user['identity_document_album']:
+            documents = MediaFiles.objects.filter(
+                album=user['identity_document_album']).values('id', 'document')
 
-        except Exception as e:
-            return Response({'errors': e.args}, status=500)
+        user['identity_documents'] = documents
+        return Response(user, status=200)
+
 
     def get(self,request):
 
-        try:
-            user_id = request.GET.get('user_id') if request.GET.get('user_id') else request.user.id
-            user = User.objects.get(id=user_id)
-            
-            serializer = self.serializer_class(user)
+        user_id = request.GET.get('user_id') if request.GET.get('user_id') else request.user.id
+        user = User.objects.get(id=user_id)
 
-            return Response(serializer.data, status=200)
+        serializer = self.serializer_class(user)
 
-        except Exception as e:
-            return Response({'errors': e.args}, status=500)
+        return Response(serializer.data, status=200)
+
         
 
 class BusinessProfileView(views.APIView):
@@ -72,45 +67,48 @@ class BusinessProfileView(views.APIView):
     serializer_class = BusinessProfileSerializer
 
     def get(self, request, user_id):
-        try:
-            user = User.objects.filter(id=user_id).all()
-            if len(user) == 0:
-                return Response({'errors':['User not found']}, status=400)
-            
-            ## attach company info to user object
-            user = user[0]
-            company = user.get_company()
 
-            if not company:
-                return Response({
-                    'errors':['User has no company']
-                }, status=404)
+        user = User.objects.filter(id=user_id).all()
+        if len(user) == 0:
+            return Response({
+                'status_code': 400,
+                'error': 'User not found',
+                'payload': ['User not found']}, status=400)
 
-            # attach properties to user object
-            order = '-created_at'
-            if request.GET.get('order_by') == 'created_at':
-                order = 'created_at'
-                
-            properties = Property.objects.filter(agent=user_id).all().order_by(order)
+        ## attach company info to user object
+        user = user[0]
+        company = user.get_company()
 
-            for property in properties:
-                property.get_images()
-                property.get_documents()
+        if not company:
+            return Response({
+                'status_code': 404,
+                'error': 'User has no company',
+                'payload': ['User has no company']
+            }, status=404)
 
-            setattr(user, 'properties', properties)
+        # attach properties to user object
+        order = '-created_at'
+        if request.GET.get('order_by') == 'created_at':
+            order = 'created_at'
 
-            ## attach reviews to user object
-            reviews = Review.objects.filter(company=company)[:NUMBER_OF_REVIEWS_TO_DISPLAY].all()
-            rating = reviews.aggregate(Avg('rating'))
+        properties = Property.objects.filter(agent=user_id).all().order_by(order)
 
-            setattr(user, 'rating', rating['rating__avg'])
-            setattr(user, 'reviews', reviews)
+        for property in properties:
+            property.get_images()
+            property.get_documents()
 
-            serializer = self.serializer_class(user)
+        setattr(user, 'properties', properties)
 
-            return Response(serializer.data, status=200)
-        except Exception as e:
-            return Response({'errors':e.args}, status=500)
+        ## attach reviews to user object
+        reviews = Review.objects.filter(company=company)[:NUMBER_OF_REVIEWS_TO_DISPLAY].all()
+        rating = reviews.aggregate(Avg('rating'))
+
+        setattr(user, 'rating', rating['rating__avg'])
+        setattr(user, 'reviews', reviews)
+
+        serializer = self.serializer_class(user)
+
+        return Response(serializer.data, status=200)
 
 class CreateCompany(views.APIView):
 
@@ -120,27 +118,30 @@ class CreateCompany(views.APIView):
 
     def post(self, request):
 
-        try:
-            reference_number = request.data.get('reference_number', '')
+        reference_number = request.data.get('reference_number', '')
 
-            company_objects = Company.objects.filter(
-                reference_number=reference_number, user = request.user)
+        company_objects = Company.objects.filter(
+            reference_number=reference_number, user = request.user)
 
-            if len(company_objects) == 0:
-                return Response({"errors":["reference number not found. validate your company registration number again"]}, status=400)
+        if len(company_objects) == 0:
+            return Response({
+                'status_code': 400,
+                'error': "reference number not found. validate your company registration number again",
+                "payload": ["reference number not found. validate your company registration number again"]}, status=400)
 
-            if not company_objects[0].is_verified:
-                return Response({"errors": ["verify company registration number"]}, status=400)
+        if not company_objects[0].is_verified:
+            return Response({
+                'status_code': 400,
+                'error': "verify company registration number",
+                "payload": ["verify company registration number"]}, status=400)
 
-            serializer = self.serializer_class(company_objects[0], data=request.data)
-            serializer.is_valid(raise_exception=True)
+        serializer = self.serializer_class(company_objects[0], data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-            serializer.save()
+        serializer.save()
 
-            return Response(serializer.data, status=200)
+        return Response(serializer.data, status=200)
 
-        except Exception as e:
-            return Response({'errors': e.args}, status=500)
 
 
 class AddBankInformation(views.APIView):
@@ -150,19 +151,19 @@ class AddBankInformation(views.APIView):
 
     def patch(self, request):
 
-        try:
-            company_objects = Company.objects.filter(user=request.user)
+        company_objects = Company.objects.filter(user=request.user)
 
-            if len(company_objects) ==0:
-                return Response({ "errors": ["User hasn't registered a business."]}, status=400)
+        if len(company_objects) ==0:
+            return Response({
+                "status_code": 400,
+                "error": "User hasn't registered a business.",
+                "payload": ["User hasn't registered a business."]}, status=400)
 
-            serializer = self.serializer_class(company_objects[0], data=request.data )
-            serializer.is_valid(raise_exception=True)
-            output = serializer.save()
-            return Response(output, status=200)
+        serializer = self.serializer_class(company_objects[0], data=request.data )
+        serializer.is_valid(raise_exception=True)
+        output = serializer.save()
+        return Response(output, status=200)
 
-        except Exception as e:
-            return Response({'errors': e.args}, status=500)
 
 
 class AgentListView(ReadOnlyModelViewSet):
@@ -186,15 +187,12 @@ class ReviewListView(views.APIView):
 
     def get(self, request, company_id):
 
-        try:
-            reviews = Review.objects.filter(company=company_id)
+        reviews = Review.objects.filter(company=company_id)
 
-            serializer = self.serializer_class(reviews, many=True)
+        serializer = self.serializer_class(reviews, many=True)
 
-            return Response(serializer.data, status=200)
+        return Response(serializer.data, status=200)
 
-        except Exception as e:
-            return Response({'errors': e.args}, status=500)
 
 
 class ReviewCreateView(views.APIView):
@@ -204,22 +202,25 @@ class ReviewCreateView(views.APIView):
 
     def post(self, request, company_id):
 
-        try:
-            company = Company.objects.filter(id=company_id)
+        company = Company.objects.filter(id=company_id)
 
-            if len(company) == 0:
-                return Response({"errors": ["Company not found"]}, status=400)
+        if len(company) == 0:
+            return Response({
+                "status_code": 400,
+                "error": "Company not found",
+                "payload": ["Company not found"]}, status=400)
 
-            if company[0].user == request.user:
-                return Response({'errors': ["Cannot review this company as it belongs to this user"]}, status=403)
+        if company[0].user == request.user:
+            return Response({
+                "status_code": 400,
+                "error": "Cannot review this company as it belongs to this user",
+                'payload': ["Cannot review this company as it belongs to this user"]}, status=403)
 
-            serializer = self.serializer_class(data=request.data)
-            serializer.is_valid(raise_exception=True)
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-            with transaction.atomic():
-                serializer.save(reviewer = request.user, company = company[0])
+        with transaction.atomic():
+            serializer.save(reviewer = request.user, company = company[0])
 
-            return Response(serializer.data, status=200)
+        return Response(serializer.data, status=200)
 
-        except Exception as e:
-            return Response({'errors': e.args}, status=500)

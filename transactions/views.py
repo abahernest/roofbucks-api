@@ -18,16 +18,13 @@ class AgentsTransactionLogsListView(views.APIView):
     permission_classes = [permissions.IsAuthenticated, IsAgent]
 
     def get(self,request):
-        try:
 
-            tx_logs = TransactionLog.objects.filter(agent=request.user).order_by("-created_at")
+        tx_logs = TransactionLog.objects.filter(agent=request.user).order_by("-created_at")
 
-            serializer = self.serializer_class(tx_logs, many=True)
+        serializer = self.serializer_class(tx_logs, many=True)
 
-            return Response(serializer.data, status=200)
+        return Response(serializer.data, status=200)
 
-        except Exception as e:
-            return Response({'errors': e.args}, status=500)
 
 
 class ClientTransactionLogsListView(views.APIView):
@@ -36,16 +33,13 @@ class ClientTransactionLogsListView(views.APIView):
     permission_classes = [permissions.IsAuthenticated, IsCustomer]
 
     def get(self, request):
-        try:
 
-            tx_logs = TransactionLog.objects.filter(client=request.user).order_by("-created_at")
+        tx_logs = TransactionLog.objects.filter(client=request.user).order_by("-created_at")
 
-            serializer = self.serializer_class(tx_logs, many=True)
+        serializer = self.serializer_class(tx_logs, many=True)
 
-            return Response(serializer.data, status=200)
+        return Response(serializer.data, status=200)
 
-        except Exception as e:
-            return Response({'errors': e.args}, status=500)
 
 
 class PurchasePropertiesAPIView(views.APIView):
@@ -54,56 +48,53 @@ class PurchasePropertiesAPIView(views.APIView):
     permission_classes = [permissions.IsAuthenticated, IsCustomer]
 
     def post(self, request):
-        try:
 
-            with transaction.atomic():
-                bulkLogs, notificationsList = [], []
-                cart = ShoppingCart.objects.filter(user=request.user)
+        with transaction.atomic():
+            bulkLogs, notificationsList = [], []
+            cart = ShoppingCart.objects.filter(user=request.user)
 
-                for item in cart:
-                    
-                    property = item.property
+            for item in cart:
 
-                    ## generate referenceId
-                    referenceId = generateTransactionReference()
+                property = item.property
 
-                    ## delete item from cart
-                    item.delete()
+                ## generate referenceId
+                referenceId = generateTransactionReference()
 
-                    # Queue Transaction
-                    payment_service_response = chargeCard()
+                ## delete item from cart
+                item.delete()
 
-                    ## create Transaction Logs
-                    bulkLogs.append(
-                        TransactionLog(**{
-                            "property_name": property.name,
-                            "reference": referenceId,
-                            "property": property,
-                            "client": request.user,
-                            "agent": property.agent,
-                            "number_of_shares": item.quantity,
-                            "amount": property.price_per_share,
-                            **payment_service_response
-                        }))
+                # Queue Transaction
+                payment_service_response = chargeCard()
 
-                    ## save notifications object
-                    payment_status = payment_service_response.get('status')
-                    notification_message = f'{payment_status} transaction for property {property.id}'
-                    notificationsList.extend([
-                        {"user": request.user, "message": notification_message}, ##notify client
-                        {"user": property.agent, "message": notification_message} ##notify agent
-                        ])
-                
-                transactionLogs = TransactionLog.objects.bulk_create(bulkLogs)
+                ## create Transaction Logs
+                bulkLogs.append(
+                    TransactionLog(**{
+                        "property_name": property.name,
+                        "reference": referenceId,
+                        "property": property,
+                        "client": request.user,
+                        "agent": property.agent,
+                        "number_of_shares": item.quantity,
+                        "amount": property.price_per_share,
+                        **payment_service_response
+                    }))
 
-                ## send notifications
-                Notifications.new_bulk_entry(notificationsList)
+                ## save notifications object
+                payment_status = payment_service_response.get('status')
+                notification_message = f'{payment_status} transaction for property {property.id}'
+                notificationsList.extend([
+                    {"user": request.user, "message": notification_message}, ##notify client
+                    {"user": property.agent, "message": notification_message} ##notify agent
+                    ])
 
-                serializer = self.serializer_class(transactionLogs, many=True)
+            transactionLogs = TransactionLog.objects.bulk_create(bulkLogs)
 
-            return Response(serializer.data, status=200)
+            ## send notifications
+            Notifications.new_bulk_entry(notificationsList)
 
-        except Exception as e:
-            return Response({'errors': e.args}, status=500)
+            serializer = self.serializer_class(transactionLogs, many=True)
+
+        return Response(serializer.data, status=200)
+
 
 

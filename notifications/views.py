@@ -10,13 +10,12 @@ class NotificationsListView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        try:
-            notifications = Notifications.objects.filter(
-                user=request.user).order_by("-created_at")
 
-            serializer = self.serializer_class(notifications, many=True)
+        notifications = Notifications.objects.filter(
+            user=request.user).order_by("-created_at")
 
-            return Response(serializer.data, status=200)
+        serializer = self.serializer_class(notifications, many=True)
 
-        except Exception as e:
-            return Response({'errors': e.args}, status=500)
+        return Response(serializer.data, status=200)
+
+

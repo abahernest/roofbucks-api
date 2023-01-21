@@ -5,6 +5,7 @@ class IsAgent(permissions.BasePermission):
     """
     Global permission check for authorized agent
     """
+    message = "Only agents can perform this action"
 
     def has_permission(self,request,view):
         user = request.user
@@ -19,6 +20,8 @@ class IsCustomer(permissions.BasePermission):
     """
     Global permission check for authorized agent
     """
+
+    message = "Only customers can perform this action"
 
     def has_permission(self, request, view):
         user = request.user
