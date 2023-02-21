@@ -7,22 +7,24 @@ from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.encoding import force_str, smart_str, smart_bytes, DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
-from users.models import User, EmailVerification
+from users.models import User, EmailVerification, USER_ROLES
 from utils.identity_verification import VerifyCompany
 from users.models import Company
 
 
 class SignupSerializer(serializers.ModelSerializer):
     password = serializers.CharField(min_length=8, max_length=68, write_only=True)
+    role = serializers.IntegerField(min_value=0, max_value=1, write_only=True)
 
     class Meta:
         model = User
-        fields = ['firstname', 'lastname', 'password', 'email']
+        fields = ['firstname', 'lastname', 'password', 'email', 'role']
 
     def validate(self, attrs):
         firstname = attrs.get('firstname', '')
         lastname = attrs.get('lastname', '')
         password = attrs.get('password', '')
+        role = attrs.get('role', '')
 
         if not firstname.isalpha():
             raise serializers.ValidationError("firstname must contain alphabets only")
@@ -41,6 +43,9 @@ class SignupSerializer(serializers.ModelSerializer):
 
         if re.search(r"[@$!%*#?&]", password) is None:
             raise serializers.ValidationError("password must contain One Special Character")
+
+
+        attrs['role'] = USER_ROLES[role][0]
 
         return attrs
 

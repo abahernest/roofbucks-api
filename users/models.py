@@ -8,15 +8,17 @@ from album.models import MediaAlbum, MediaFiles
 
 class UserManager(BaseUserManager):
 
-    def create_user(self, firstname, lastname, email, password=None):
+    def create_user(self, firstname, lastname, email, role, password=None):
         if email is None:
             raise TypeError('Users should have an Email')
         if firstname is None:
             raise TypeError('Users should have a Firstname')
         if lastname is None:
             raise TypeError('Users should have a Lastname')
+        if role is None:
+            raise TypeError('Users should have a role')
 
-        user = self.model(lastname=lastname, firstname=firstname, email=self.normalize_email(email))
+        user = self.model(lastname=lastname, firstname=firstname, email=self.normalize_email(email), role=role)
         user.set_password(password)
         user.save()
         return user
@@ -33,7 +35,7 @@ class UserManager(BaseUserManager):
 
 
 USER_ROLES = [
-            ("CUSTOMER","Clients/Customers/Buyers"),
+            ("SHAREHOLDER","ShareHolder/Customers/Buyers"),
             ("AGENT","Real Estate Agent")
         ]
 IDENTITY_DOCUMENT_CHOICES = [
