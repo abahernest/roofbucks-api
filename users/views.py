@@ -138,7 +138,12 @@ class CreateCompany(views.APIView):
         serializer = self.serializer_class(company_objects[0], data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        serializer.save()
+        with transaction.atomic():
+            serializer.save()
+
+            user = request.user
+            user.stages_of_profile_completion['business'] = True
+            user.save()
 
         return Response(serializer.data, status=200)
 

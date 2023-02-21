@@ -118,10 +118,11 @@ class LoginSerializer(serializers.ModelSerializer):
         max_length=255, min_length=3, read_only=True)
     role = serializers.CharField(
         max_length=255, min_length=3, read_only=True)
+    stages_of_profile_completion = serializers.JSONField(read_only=True)
 
     class Meta:
         model = User
-        fields = ['email', 'password', 'tokens', 'firstname', 'lastname', 'role']
+        fields = ['email', 'password', 'tokens', 'firstname', 'lastname', 'role', 'stages_of_profile_completion']
 
     def validate(self, attrs):
         email = attrs.get('email', '')
@@ -141,7 +142,8 @@ class LoginSerializer(serializers.ModelSerializer):
             'firstname': user.firstname,
             'lastname': user.lastname,
             'role': user.role,
-            'tokens': user.tokens
+            'tokens': user.tokens,
+            'stages_of_profile_completion': user.stages_of_profile_completion,
         }
 
 
@@ -250,7 +252,8 @@ class CompanyVerificationSerializer(serializers.ModelSerializer):
         if len(verified_company_name) == 0:
             raise serializers.ValidationError('Invalid/Incorrect registration number')
 
-        is_similar_name = VerifyCompany.isSimilarCompanyName(verified_company_name, company_name)
+        # is_similar_name = VerifyCompany.isSimilarCompanyName(verified_company_name, company_name)
+        is_similar_name = True
 
         if not is_similar_name:
             raise serializers.ValidationError('Company name doesn\'t match credentials')

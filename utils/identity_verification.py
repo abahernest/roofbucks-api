@@ -1,4 +1,5 @@
 import os
+from random import randint
 from difflib import SequenceMatcher
 
 class VerifyCompany:
@@ -12,9 +13,9 @@ class VerifyCompany:
 
     @staticmethod
     def verify_cac_number(reg_number):
-        
+
         if 'sample' in reg_number:
-            return 'SAMPLE COMPANY'
+            return f'SAMPLE COMPANY {randint(1,1000)}'
         
         return ""
 

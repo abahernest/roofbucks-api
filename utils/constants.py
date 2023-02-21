@@ -3,3 +3,8 @@ ALLOWABLE_NUMBER_OF_DOCUMENTS = 6
 ALLOWABLE_NUMBER_OF_IMAGES = 5
 MAXIMUM_SIMILAR_PROPERTIES = 10
 NUMBER_OF_REVIEWS_TO_DISPLAY=10
+STAGES_OF_PROFILE_COMPLETION = {
+        'profile': False,
+        'business': False,
+        'billing': False
+    }

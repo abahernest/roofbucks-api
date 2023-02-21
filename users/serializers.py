@@ -1,5 +1,7 @@
 from rest_framework import serializers
+from django.db.models.expressions import RawSQL
 from django.utils import timezone, dateparse
+
 dateparse.parse_date
 
 from .models import User, Company, Review
@@ -7,7 +9,8 @@ from album.models import MediaAlbum, MediaFiles
 from album.serializers import MediaAlbumSerializer
 from properties.serializers import PropertySerializer
 
-class UpdateProfileSerializer (serializers.ModelSerializer):
+
+class UpdateProfileSerializer(serializers.ModelSerializer):
 
     def validate_file_extension(value):
         if value.content_type not in ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']:
@@ -18,16 +21,15 @@ class UpdateProfileSerializer (serializers.ModelSerializer):
         if value.size > max_size:
             raise serializers.ValidationError('Maximum file size is 8MB')
 
-
     IDENTITY_DOCUMENT_CHOICES = [
         ("NATIONAL_ID", "National ID Card"),
         ("DRIVERS_LICENSE", "Drivers License"),
         ("PASSPORT", "Passport")
     ]
 
-    email = serializers.EmailField(min_length=3,read_only=True)
+    email = serializers.EmailField(min_length=3, read_only=True)
     display_photo = serializers.ImageField(
-        max_length=256, allow_empty_file=False, required = False)
+        max_length=256, allow_empty_file=False, required=False)
     proof_of_address_document = serializers.FileField(
         max_length=256, allow_empty_file=False, validators=[validate_file_extension, validate_file_size])
     identity_documents = serializers.ListField(
@@ -43,12 +45,11 @@ class UpdateProfileSerializer (serializers.ModelSerializer):
     )
     identity_document_type = serializers.ChoiceField(IDENTITY_DOCUMENT_CHOICES, required=True)
 
-
     class Meta:
         model = User
         fields = ['firstname', 'lastname', 'date_of_birth', 'email', 'address',
                   'city', 'country', 'phone', 'identity_document_type',
-                  'identity_document_number', 'identity_document_expiry_date', 
+                  'identity_document_number', 'identity_document_expiry_date',
                   'display_photo', 'proof_of_address_document', 'identity_documents'
                   ]
 
@@ -76,7 +77,7 @@ class UpdateProfileSerializer (serializers.ModelSerializer):
         if valid_date <= timezone.now().date():
             raise serializers.ValidationError(
                 'identity_document_expiry_date should be a future date')
-        
+
         return attrs
 
     def update(self, instance, validated_data):
@@ -94,16 +95,21 @@ class UpdateProfileSerializer (serializers.ModelSerializer):
                     for document in identity_documents:
                         media_files_array.append(
                             MediaFiles(album=album, document=document, media_type='DOCUMENT'))
-                    
+
                     MediaFiles.objects.bulk_create(media_files_array)
                     updatable_fields['identity_document_album'] = album
             else:
                 updatable_fields[key] = validated_data.get(key)
-                            
-        return User.objects.filter(id=instance.id).update(**updatable_fields)
 
 
-class CreateCompanySerializer (serializers.ModelSerializer):
+        user = User.objects.filter(id=instance.id).update(**updatable_fields)
+        instance.stages_of_profile_completion["profile"] = True
+        instance.save()
+        return user
+
+
+
+class CreateCompanySerializer(serializers.ModelSerializer):
 
     def validate_file_extension(value):
         if value.content_type not in ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']:
@@ -115,12 +121,12 @@ class CreateCompanySerializer (serializers.ModelSerializer):
         if value.size > max_size:
             raise serializers.ValidationError('Maximum file size is 8MB')
 
-
     email = serializers.EmailField(min_length=3)
     company_logo = serializers.ImageField(
         max_length=256, allow_empty_file=False, required=False)
     certificate_of_incorporation = serializers.FileField(
-        max_length=256, allow_empty_file=False, validators=[validate_file_extension, validate_file_size] ,required=False)
+        max_length=256, allow_empty_file=False, validators=[validate_file_extension, validate_file_size],
+        required=False)
     reference_number = serializers.CharField(min_length=4)
     phone = serializers.CharField(min_length=4)
     display_name = serializers.CharField(min_length=2, max_length=65)
@@ -132,7 +138,7 @@ class CreateCompanySerializer (serializers.ModelSerializer):
     class Meta:
         model = Company
         fields = ['email', 'company_logo', 'certificate_of_incorporation', 'reference_number', 'phone',
-                  'city', 'country', 'display_name', 'website', 'description',]
+                  'city', 'country', 'display_name', 'website', 'description', ]
 
     def validate(self, attrs):
         phone = attrs.get('phone', '')
@@ -142,7 +148,7 @@ class CreateCompanySerializer (serializers.ModelSerializer):
             raise serializers.ValidationError("phone must contain only digits")
 
         company_objects = Company.objects.filter(phone=phone)
-        if len(company_objects) >0:
+        if len(company_objects) > 0:
             raise serializers.ValidationError("phone already taken")
 
         company_objects = Company.objects.filter(email=email)
@@ -152,9 +158,8 @@ class CreateCompanySerializer (serializers.ModelSerializer):
         return attrs
 
 
-class AddBankInfoSerializer (serializers.ModelSerializer):
-
-    bank_information = serializers.DictField(child = serializers.CharField(min_length=3))
+class AddBankInfoSerializer(serializers.ModelSerializer):
+    bank_information = serializers.DictField(child=serializers.CharField(min_length=3))
 
     class Meta:
         model = Company
@@ -171,41 +176,40 @@ class AddBankInfoSerializer (serializers.ModelSerializer):
 
         if not bank_information.get("account_number", '').isdigit():
             raise serializers.ValidationError("Account number must be a string of numbers")
-        
+
         return attrs
 
-
-    def update (self, instance, validated_data):
+    def update(self, instance, validated_data):
         bank_info = validated_data.get('bank_information')
 
         instance.bank_information.append(bank_info)
+        user = instance.user
+        user.stages_of_profile_completion['billing'] = True
+        user.save()
         instance.save()
 
         return instance.bank_information
 
-class UserSerializer(serializers.ModelSerializer):
 
+class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = '__all__'
 
 
-class CompanySerializer (serializers.ModelSerializer):
-
+class CompanySerializer(serializers.ModelSerializer):
     class Meta:
         model = Company
         fields = '__all__'
 
 
 class ReviewersSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = User
         fields = ['id', 'display_photo', 'firstname', 'lastname']
 
 
 class ReviewsSerializer(serializers.ModelSerializer):
-
     rating = serializers.IntegerField(max_value=5, min_value=1, required=False)
     review = serializers.CharField(required=False)
     reviewer = ReviewersSerializer(required=False)
@@ -227,25 +231,25 @@ class ReviewsSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data) -> Review:
-
         return Review.objects.create(
             **validated_data
         )
 
-class BusinessProfileSerializer (serializers.ModelSerializer):
 
+class BusinessProfileSerializer(serializers.ModelSerializer):
     company = CompanySerializer(required=False)
     properties = PropertySerializer(many=True, required=False)
     reviews = ReviewsSerializer(many=True, required=False)
-    rating =  serializers.DecimalField(required=False, decimal_places=1, max_digits=2, read_only=True)
+    rating = serializers.DecimalField(required=False, decimal_places=1, max_digits=2, read_only=True)
+
     class Meta:
         model = User
         exclude = ['password']
 
-class AgentListSerializer(serializers.ModelSerializer):
 
+class AgentListSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'firstname', 'lastname', 'phone', 
-        'email', 'city', 'country', 'secondary_phone', 
-        'display_photo', 'title', 'summary']
+        fields = ['id', 'firstname', 'lastname', 'phone',
+                  'email', 'city', 'country', 'secondary_phone',
+                  'display_photo', 'title', 'summary']
