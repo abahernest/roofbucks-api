@@ -30,28 +30,25 @@ class Profile(views.APIView):
         user_id = request.user.id
         user = User.objects.get(id=user_id)
 
-        print(request.data)
         serializer = self.serializer_class(user, data=request.data)
         serializer.is_valid(raise_exception=True)
 
         with transaction.atomic():
             serializer.save()
+            # user.refresh_from_db()
+            user = User.objects.filter(id=user_id).values('id','firstname', 'lastname', 'date_of_birth', 'email', 'address',
+                                       'city', 'country', 'phone', 'identity_document_type',
+                                       'identity_document_number', 'identity_document_expiry_date',
+                                       'display_photo', 'proof_of_address_document', 'identity_document_album'
+                                       )[0]
+            documents = None
+            if user['identity_document_album']:
+                documents = MediaFiles.objects.filter(
+                    album=user['identity_document_album']).values('id', 'document')
 
-        user = User.objects.filter(id=user_id).values('id','firstname', 'lastname', 'date_of_birth', 'email', 'address',
-                                   'city', 'country', 'phone', 'identity_document_type',
-                                   'identity_document_number', 'identity_document_expiry_date',
-                                   'display_photo', 'proof_of_address_document', 'identity_document_album'
-                                   )[0]
+            user['identity_documents'] = documents
 
-        documents = None
-        if user['identity_document_album']:
-            documents = MediaFiles.objects.filter(
-                album=user['identity_document_album']).values('id', 'document')
-
-        user['identity_documents'] = documents
-
-        print(user)
-        return Response(user, status=200)
+            return Response(user, status=200)
 
 
     def get(self,request):

@@ -199,7 +199,6 @@ class SimilarPropertyView(views.APIView):
         for property in properties:
             out = property.get_images()
             setattr(property, 'images', out)
-            print(property.images)
 
         serializer = self.serializer_class(properties, many=True)
 
@@ -286,13 +285,14 @@ class UpdatePropertyAPIView(views.APIView):
         with transaction.atomic():
             serializer.save()
 
-        property = Property.objects.filter(id=property.id).values()[0]
+            property = Property.objects.filter(id=property.id).values()[0]
 
-        # fetch media files
-        property['images'] = MediaFiles.objects.filter(
-            album=property['image_album_id']).values('image', 'id')
-        property['documents'] = MediaFiles.objects.filter(
-            album=property['document_album_id']).values('document', 'id')
+            # fetch media files
+            property['images'] = MediaFiles.objects.filter(
+                album=property['image_album_id']).values('image', 'id')
+            property['documents'] = MediaFiles.objects.filter(
+                album=property['document_album_id']).values('document', 'id')
+
         return Response(property, status=200)
 
 

@@ -12,7 +12,6 @@ from properties.serializers import PropertySerializer
 class UpdateProfileSerializer(serializers.ModelSerializer):
 
     def validate_file_extension(value):
-        print(value.content_type)
         if value.content_type not in ALLOWABLE_DOCUMENT_TYPES:
             raise serializers.ValidationError('Only PDF, JPG, JPEG, PNG files are allowed')
 
@@ -80,7 +79,7 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
 
         return attrs
 
-    def update(self, instance, validated_data):
+    def update(self, instance: User, validated_data):
 
         ## add identity documents to album
         media_files_array, updatable_fields = [], {}
@@ -101,11 +100,11 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
             else:
                 updatable_fields[key] = validated_data.get(key)
 
-
-        user = User.objects.filter(id=instance.id).update(**updatable_fields)
         instance.stages_of_profile_completion["profile"] = True
         instance.save()
-        return user
+        User.objects.filter(id=instance.id).update(**updatable_fields)
+
+        return instance
 
 
 
