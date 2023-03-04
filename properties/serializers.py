@@ -7,7 +7,7 @@ from .models import Property, ShoppingCart, PropertyInspection
 from album.models import MediaFiles, MediaAlbum
 from album.serializers import MediaAlbumSerializer, MediaFilesSerializer
 from utils.constants import (
-    ALLOWABLE_NUMBER_OF_DOCUMENTS, ALLOWABLE_NUMBER_OF_IMAGES)
+    ALLOWABLE_NUMBER_OF_DOCUMENTS, ALLOWABLE_NUMBER_OF_IMAGES, ALLOWABLE_DOCUMENT_TYPES)
 from utils.date import (greater_than_today)
 
 
@@ -15,7 +15,7 @@ from utils.date import (greater_than_today)
 class NewPropertySerializer (serializers.ModelSerializer):
 
     def validate_file_extension(value):
-        if value.content_type not in ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']:
+        if value.content_type not in ALLOWABLE_DOCUMENT_TYPES:
             raise serializers.ValidationError(
                 'Only PDF, JPG, JPEG, PNG files are allowed')
 

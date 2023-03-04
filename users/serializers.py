@@ -1,12 +1,11 @@
 from rest_framework import serializers
-from django.db.models.expressions import RawSQL
 from django.utils import timezone, dateparse
 
 dateparse.parse_date
 
 from .models import User, Company, Review
 from album.models import MediaAlbum, MediaFiles
-from album.serializers import MediaAlbumSerializer
+from utils.constants import ALLOWABLE_DOCUMENT_TYPES
 from properties.serializers import PropertySerializer
 
 
@@ -14,7 +13,7 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
 
     def validate_file_extension(value):
         print(value.content_type)
-        if value.content_type not in ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']:
+        if value.content_type not in ALLOWABLE_DOCUMENT_TYPES:
             raise serializers.ValidationError('Only PDF, JPG, JPEG, PNG files are allowed')
 
     def validate_file_size(value):
@@ -113,7 +112,7 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
 class CreateCompanySerializer(serializers.ModelSerializer):
 
     def validate_file_extension(value):
-        if value.content_type not in ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']:
+        if value.content_type not in ALLOWABLE_DOCUMENT_TYPES:
             raise serializers.ValidationError(
                 'Only PDF, JPG, JPEG, PNG files are allowed')
 

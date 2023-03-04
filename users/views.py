@@ -49,6 +49,8 @@ class Profile(views.APIView):
                 album=user['identity_document_album']).values('id', 'document')
 
         user['identity_documents'] = documents
+
+        print(user)
         return Response(user, status=200)
 
 
