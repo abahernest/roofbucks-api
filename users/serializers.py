@@ -13,6 +13,7 @@ from properties.serializers import PropertySerializer
 class UpdateProfileSerializer(serializers.ModelSerializer):
 
     def validate_file_extension(value):
+        print(value.content_type)
         if value.content_type not in ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']:
             raise serializers.ValidationError('Only PDF, JPG, JPEG, PNG files are allowed')
 
