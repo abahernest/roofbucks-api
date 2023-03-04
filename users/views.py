@@ -30,6 +30,7 @@ class Profile(views.APIView):
         user_id = request.user.id
         user = User.objects.get(id=user_id)
 
+        print(request.data)
         serializer = self.serializer_class(user, data=request.data)
         serializer.is_valid(raise_exception=True)
 

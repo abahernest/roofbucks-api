@@ -252,8 +252,7 @@ class CompanyVerificationSerializer(serializers.ModelSerializer):
         if len(verified_company_name) == 0:
             raise serializers.ValidationError('Invalid/Incorrect registration number')
 
-        # is_similar_name = VerifyCompany.isSimilarCompanyName(verified_company_name, company_name)
-        is_similar_name = True
+        is_similar_name = VerifyCompany.isSimilarCompanyName(verified_company_name, company_name)
 
         if not is_similar_name:
             raise serializers.ValidationError('Company name doesn\'t match credentials')
