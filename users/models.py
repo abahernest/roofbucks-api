@@ -56,6 +56,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_verified                 = models.BooleanField(default=False)
     is_active                   = models.BooleanField(default=True)
     is_staff                    = models.BooleanField(default=False)
+    display_name                = models.CharField(max_length=255, unique=True, null=True, blank=True)
+
 
     nationality                 = models.CharField(max_length=255, null=True, blank=True)
     title                       = models.CharField(max_length=255, null=True, blank=True)

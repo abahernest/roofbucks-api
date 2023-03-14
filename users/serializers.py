@@ -106,7 +106,27 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
 
         return instance
 
+class AccountSettingsSerializer(serializers.Serializer):
 
+    display_name = serializers.CharField()
+    agency_display_name = serializers.CharField()
+    agency_website = serializers.URLField(required=False)
+    class Meta:
+        fields = ['display_name', 'agency_display_name', 'agency_website']
+
+    def update(self, instance, validated_data):
+
+        user = instance
+
+        user.display_name = validated_data.get('display_name')
+        company = user.get_company()
+        company.display_name = validated_data.get('agency_display_name')
+        company.website = validated_data.get('agency_website')
+
+        company.save()
+        user.save()
+
+        return validated_data
 
 class CreateCompanySerializer(serializers.ModelSerializer):
 

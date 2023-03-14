@@ -13,6 +13,7 @@ from .views import (
     SetNewPasswordAPIView,
     VerifyCompanyAPIView,
     ResendVerificationMail,
+    ChangePasswordAPIView,
     )
 
 urlpatterns = [
@@ -28,5 +29,7 @@ urlpatterns = [
     path('set-new-password/', SetNewPasswordAPIView.as_view(),
          name='set-new-password'),
     path('company-verification/', VerifyCompanyAPIView.as_view(),
-         name='company-verification')
+         name='company-verification'),
+    path('change-password/', ChangePasswordAPIView.as_view(),
+         name='change-password')
 ]

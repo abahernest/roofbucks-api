@@ -24,6 +24,7 @@ from .serializers import (
     SetNewPasswordSerializer,
     CompanyVerificationSerializer,
     ResendVerificationMailSerializer,
+    ChangePasswordSerializer,
 )
 from utils.email import SendMail
 from .permissions import IsAgent
@@ -165,6 +166,17 @@ class SetNewPasswordAPIView(generics.GenericAPIView):
         serializer.is_valid(raise_exception=True)
         return Response({'message': 'Password reset successful'}, status=status.HTTP_200_OK)
 
+
+class ChangePasswordAPIView(generics.GenericAPIView):
+    serializer_class = ChangePasswordSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+
+        serializer = self.serializer_class(instance=request.user, data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        return Response({'message': 'password change successful'}, status=status.HTTP_200_OK)
 
 class VerifyCompanyAPIView(views.APIView):
     serializer_class = CompanyVerificationSerializer

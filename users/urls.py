@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import (Profile, CreateCompany,
+from .views import (Profile, CreateCompany, AccountSettingsView,
                     AddBankInformation, BusinessProfileView, 
                     AgentListView, ReviewCreateView, ReviewListView)
 
@@ -14,5 +14,7 @@ urlpatterns = [
     path('business_reviews/<company_id>/', ReviewListView.as_view(),
          name='list-reviews'),
     path('add_reviews/<company_id>/', ReviewCreateView.as_view(),
+         name='create-reviews'),
+    path('account_settings/', AccountSettingsView.as_view(),
          name='create-reviews')
 ]

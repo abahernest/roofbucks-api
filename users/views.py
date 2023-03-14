@@ -13,7 +13,7 @@ from album.models import MediaFiles
 from properties.models import Property
 from .serializers import (UpdateProfileSerializer, CreateCompanySerializer,
                           AddBankInfoSerializer, BusinessProfileSerializer,
-                          AgentListSerializer, ReviewsSerializer)
+                          AgentListSerializer, ReviewsSerializer, AccountSettingsSerializer)
 from utils.pagination import CustomPagination
 from utils.constants import (NUMBER_OF_REVIEWS_TO_DISPLAY)
 from authentication.permissions import IsCustomer, IsAgent
@@ -60,7 +60,33 @@ class Profile(views.APIView):
 
         return Response(serializer.data, status=200)
 
-        
+
+class AccountSettingsView(views.APIView):
+    serializer_class = AccountSettingsSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAgent]
+
+    def patch(self, request):
+
+        serializer = self.serializer_class(instance=request.user, data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        with transaction.atomic():
+            serializer.save()
+
+            return Response(serializer.data, status=200)
+
+    def get(self, request):
+
+        user = request.user
+        company = user.get_company()
+
+        account_settings = {
+            'display_name': user.display_name,
+            'agency_display_name': company.display_name,
+            'agency_website': company.website
+        }
+
+        return Response(account_settings, status=200)
 
 class BusinessProfileView(views.APIView):
 

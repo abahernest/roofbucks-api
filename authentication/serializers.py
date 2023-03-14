@@ -226,6 +226,46 @@ class SetNewPasswordSerializer(serializers.Serializer):
 
         return (user)
 
+class ChangePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(
+        min_length=6, max_length=68, write_only=True)
+    new_password = serializers.CharField(
+        min_length=6, max_length=68, write_only=True)
+
+    class Meta:
+        fields = ['current_password', 'new_password']
+
+    def validate(self, attrs):
+
+        user = self.instance
+        current_password = attrs.get('current_password')
+        new_password = attrs.get('new_password')
+
+        # validate old password
+        isCorrectPassword = user.check_password(current_password)
+        if not isCorrectPassword :
+            raise serializers.ValidationError("current password not correct")
+        # Validate new password
+
+        if re.search('[A-Z]', new_password) is None:
+            raise serializers.ValidationError(
+                "Password must contain One Uppercase Alphabet")
+
+        if re.search('[a-z]', new_password) is None:
+            raise serializers.ValidationError(
+                "Password must contain One Lowercase Alphabet")
+
+        if re.search('[0-9]', new_password) is None:
+            raise serializers.ValidationError(
+                "Password must contain One Numeric Character")
+
+        if re.search(r"[@$!%*#?&]", new_password) is None:
+            raise serializers.ValidationError(
+                "Password must contain One Special Character")
+
+        user.set_password(new_password)
+        user.save()
+        return user
 
 class CompanyVerificationSerializer(serializers.ModelSerializer):
     registration_number = serializers.CharField(min_length=4, max_length=65)
