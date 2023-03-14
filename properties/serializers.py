@@ -36,28 +36,55 @@ class NewPropertySerializer (serializers.ModelSerializer):
         min_length=1,
         max_length=ALLOWABLE_NUMBER_OF_IMAGES
     )
-    documents = serializers.ListField(
-        child=serializers.FileField(
-            allow_empty_file=False, 
-            max_length=256,
+    approved_survey_plan = serializers.FileField(
+            allow_empty_file=False,
+            max_length = 256,
+            required=False,
             validators=[validate_file_extension, validate_file_size]
-            ),
-        write_only=True,
-        required=False,
-        min_length=1,
-        max_length=ALLOWABLE_NUMBER_OF_DOCUMENTS
-    )
+            )
+    purchase_receipt = serializers.FileField(
+            allow_empty_file=False,
+            max_length = 256,
+            required=False,
+            validators=[validate_file_extension, validate_file_size]
+            )
+    excision_document = serializers.FileField(
+            allow_empty_file=False,
+            max_length = 256,
+            required=False,
+            validators=[validate_file_extension, validate_file_size]
+            )
+    gazette_document = serializers.FileField(
+            allow_empty_file=False,
+            max_length = 256,
+            required=False,
+            validators=[validate_file_extension, validate_file_size]
+            )
+    certificate_of_occupancy = serializers.FileField(
+            allow_empty_file=False,
+            max_length = 256,
+            required=False,
+            validators=[validate_file_extension, validate_file_size]
+            )
+    registered_deed_of_assignment = serializers.FileField(
+            allow_empty_file=False,
+            max_length = 256,
+            required=False,
+            validators=[validate_file_extension, validate_file_size]
+            )
     scheduled_stays = serializers.CharField(required=False)
 
     class Meta:
         model = Property
-        fields = '__all__'
+        # fields = '__all__'
         fields = ['id','name', 'description', 'completion_status', 'apartment_type', 'address', 'city', 
         'state','country', 'percentage_discount', 'promotion_closing_date', 'promotion_type', 'other_deals',
         'number_of_bedrooms', 'number_of_toilets', 'benefits', 'amenities', 'ERF_size', 'dining_area', 'cross_streets',
         'landmarks', 'floor_size', 'date_built', 'price_per_share', 'completion_cost', 'completion_date', 'zip_code',
         'percentage_completed', 'total_number_of_shares', 'total_property_cost', 'expected_ROI', 'area_rent_rolls',
-        'scheduled_stays', 'images', 'documents', 'company', 'company_name', 'image_album', 'document_album'
+        'scheduled_stays', 'images', 'company', 'company_name', 'image_album', 'document_album',
+        'registered_deed_of_assignment', 'certificate_of_occupancy', 'gazette_document', 'excision_document', 'purchase_receipt',
+        'approved_survey_plan'
         ]
         read_only_fields=['id','company','company_name', 'image_album', 'document_album' ]
 

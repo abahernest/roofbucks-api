@@ -80,6 +80,12 @@ class Property(models.Model):
             default=list
             ), default=list)
     other_incentives = models.TextField(blank=True)
+    approved_survey_plan   = models.FileField(upload_to='approved_survey_plan/', null=True)
+    purchase_receipt   = models.FileField(upload_to='purchase_receipt/', null=True)
+    excision_document   = models.FileField(upload_to='excision_document/', null=True)
+    gazette_document   = models.FileField(upload_to='gazette_document/', null=True)
+    certificate_of_occupancy   = models.FileField(upload_to='certificate_of_occupancy/', null=True)
+    registered_deed_of_assignment   = models.FileField(upload_to='registered_deed_of_assignment/', null=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

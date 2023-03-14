@@ -47,8 +47,8 @@ class NewPropertyAPIView(views.APIView):
             ## fetch media files
             property['images'] = MediaFiles.objects.filter(
                 album=property['image_album_id']).values('image','id')
-            property['documents'] = MediaFiles.objects.filter(
-                album=property['document_album_id']).values('document','id')
+            # property['documents'] = MediaFiles.objects.filter(
+            #     album=property['document_album_id']).values('document','id')
 
             ## notify agent
             notificationMessage = f'New Property Added. {property["name"]}'
