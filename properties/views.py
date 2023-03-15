@@ -6,7 +6,7 @@ from rest_framework.filters import SearchFilter
 from rest_framework.viewsets import ReadOnlyModelViewSet
 from django.db.models import Q
 
-from .serializers import (NewPropertySerializer, StayPeriodSerializer,
+from .serializers import (NewPropertySerializer, StayPeriodSerializer, PropertyInspectionQuerySerializer,
                           PropertySerializer, ShoppingCartSerializer, PropertyTableSerializer, 
                           SimilarPropertyListSerializer, RemoveShopingCartItemSerializer,
                           ScheduleSiteInspectionSerializer, PropertyInspectionSerializer)
@@ -556,7 +556,7 @@ class CancelSiteVisitAPIView (views.APIView):
 
 class AcceptAndRejectInspectionAPIView(views.APIView):
 
-    serializer_class = PropertyInspectionSerializer
+    serializer_class = PropertyInspectionQuerySerializer
     permission_classes = [permissions.IsAuthenticated, IsAgent]
 
     def patch(self, request, visitation_id, agent_action):
@@ -611,10 +611,18 @@ class AgentPropertyInspectionsAPIView(views.APIView):
     def get(self, request):
 
         query = {"agent":request.user}
-        status = request.GET.get('status')
 
-        if status in ['pending', 'accepted', 'rejected']:
-            query['status'] = status.upper()
+        query_serializer = PropertyInspectionQuerySerializer(data=request.GET)
+        query_serializer.is_valid(raise_exception=True)
+
+        if 'status' in query_serializer.validated_data:
+            query['status'] = query_serializer.validated_data['status']
+
+        if 'inspection_date' in query_serializer.validated_data:
+            query['inspection_date__date'] = query_serializer.validated_data['inspection_date']
+
+        if 'creation_date' in query_serializer.validated_data:
+            query['created_at__date'] = query_serializer.validated_data['creation_date']
 
         inspectionObjs = PropertyInspection.objects.filter(**query)
 

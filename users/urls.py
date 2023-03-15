@@ -16,5 +16,5 @@ urlpatterns = [
     path('add_reviews/<company_id>/', ReviewCreateView.as_view(),
          name='create-reviews'),
     path('account_settings/', AccountSettingsView.as_view(),
-         name='create-reviews')
+         name='account_settings')
 ]

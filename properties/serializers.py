@@ -3,7 +3,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import ParseError
 
 
-from .models import Property, ShoppingCart, PropertyInspection
+from .models import Property, ShoppingCart, PropertyInspection, CHOICES_FOR_INSPECTION_STATUS
 from album.models import MediaFiles, MediaAlbum
 from album.serializers import MediaAlbumSerializer, MediaFilesSerializer
 from utils.constants import (
@@ -327,3 +327,11 @@ class PropertyInspectionSerializer(serializers.ModelSerializer):
     class Meta:
         model = PropertyInspection
         fields = '__all__'
+
+class PropertyInspectionQuerySerializer(serializers.Serializer):
+
+    status = serializers.ChoiceField(choices=CHOICES_FOR_INSPECTION_STATUS, required=False)
+    inspection_date = serializers.DateField(required=False)
+    creation_date = serializers.DateField(required=False)
+    class Meta:
+        fields = ['creation_date', 'inspection_date', 'status']
