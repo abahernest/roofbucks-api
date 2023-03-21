@@ -38,7 +38,6 @@ class NewPropertyAPIView(views.APIView):
         serializer = self.serializer_class(data= request.data)
         serializer.is_valid(raise_exception=True)
 
-        # serializer.validated_data['agent'] = request.user
 
         with transaction.atomic():
             property=serializer.save(agent = request.user, company_name=company.registered_name, company=company)

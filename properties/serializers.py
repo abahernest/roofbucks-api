@@ -24,6 +24,12 @@ class NewPropertySerializer (serializers.ModelSerializer):
         if value.size > max_size:
             raise serializers.ValidationError('Maximum file size is 8MB')
 
+    default_image = serializers.ImageField(
+        allow_empty_file=False,
+        max_length=256,
+        validators=[validate_file_size],
+        required=False,
+    )
 
     images = serializers.ListField(
         child= serializers.ImageField(
@@ -84,7 +90,7 @@ class NewPropertySerializer (serializers.ModelSerializer):
         'percentage_completed', 'total_number_of_shares', 'total_property_cost', 'expected_ROI', 'area_rent_rolls',
         'scheduled_stays', 'images', 'company', 'company_name', 'image_album', 'document_album',
         'registered_deed_of_assignment', 'certificate_of_occupancy', 'gazette_document', 'excision_document', 'purchase_receipt',
-        'approved_survey_plan'
+        'approved_survey_plan', 'default_image'
         ]
         read_only_fields=['id','company','company_name', 'image_album', 'document_album' ]
 
@@ -126,10 +132,18 @@ class NewPropertySerializer (serializers.ModelSerializer):
 
         uploaded_images = validated_data.get('images')
         uploaded_documents = validated_data.get('documents')
+        default_image = validated_data.get('default_image')
+
         
         image_album, document_album = None, None
 
         if uploaded_images:
+
+            ## if 'images' is part of request payload, then 'default_image' must be passed also
+            if not default_image:
+                raise serializers.ValidationError({"default_image":"default_image field is required"})
+
+
             validated_data.pop('images')
             image_album = MediaAlbum.objects.create()
             
@@ -137,8 +151,6 @@ class NewPropertySerializer (serializers.ModelSerializer):
                 media_files_array.append(
                     MediaFiles(album=image_album, image=image, media_type='IMAGE') )
 
-            ## select one image from uploaded_images as default image
-            validated_data['default_image']=uploaded_images[0]
 
         if uploaded_documents:
             validated_data.pop('documents')
@@ -180,6 +192,12 @@ class NewPropertySerializer (serializers.ModelSerializer):
                 raise ParseError('Attempting to change Fixed Values')
 
             if key == 'images':
+
+                ## if 'images' is part of request payload, then 'default_image' must be passed also
+                ## as long as property doesn't already have default image
+                if (not instance.default_image) and (not validated_data.get('default_image')):
+                    raise serializers.ValidationError({"default_image":["default_image field is required"]})
+
                 media_files_array = []
                 image_album = instance.image_album
 
