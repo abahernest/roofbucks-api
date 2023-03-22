@@ -72,7 +72,7 @@ class Property(models.Model):
     zip_code = models.PositiveIntegerField(null=True)
     total_number_of_shares = models.PositiveIntegerField(null=True)
     total_property_cost = models.PositiveBigIntegerField(null=True)
-    expected_ROI    = models.PositiveBigIntegerField(null=True)
+    expected_ROI    = models.FloatField(null=True)
     area_rent_rolls = models.CharField(max_length=255, blank=True)
     scheduled_stays = ArrayField(
         ArrayField(
