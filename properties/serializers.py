@@ -317,6 +317,7 @@ class PropertyListingSerializer (serializers.ModelSerializer):
 
 class PropertyMarketplaceSerializer (serializers.ModelSerializer):
 
+    image_album = MediaAlbumSerializer()
     class Meta:
         model = Property
         fields = ['id', 'name', 'created_at', 'company_name', 'agent', 'description',
