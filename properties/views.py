@@ -4,14 +4,15 @@ from rest_framework.response import Response
 from django.db import transaction
 from rest_framework.filters import SearchFilter
 from rest_framework.viewsets import ReadOnlyModelViewSet
-from django.db.models import Q
+from django.db.models import Q, Prefetch
+from django.utils import timezone
 
 from .serializers import (NewPropertySerializer, StayPeriodSerializer, PropertyInspectionQuerySerializer,
-                          PropertySerializer, ShoppingCartSerializer, PropertyTableSerializer, 
-                          SimilarPropertyListSerializer, RemoveShopingCartItemSerializer,
-                          ScheduleSiteInspectionSerializer, PropertyInspectionSerializer)
+                          PropertySerializer, ShoppingCartSerializer, PropertyTableSerializer, PropertyMarketplaceSerializer,
+                          SimilarPropertyListSerializer, RemoveShopingCartItemSerializer, PropertyListingSerializer,
+                          ScheduleSiteInspectionSerializer, PropertyInspectionSerializer, PropertyTopdealsSerializer,)
 from authentication.permissions import IsAgent, IsCustomer
-from .models import Property, ShoppingCart, PropertyInspection
+from .models import Property, ShoppingCart, PropertyInspection, MODERATION_STATUS_CHOICES
 from album.models import MediaFiles
 from users.models import Company
 from notifications.models import Notifications
@@ -72,7 +73,7 @@ class StayPeriodAPIView(views.APIView):
                 'payload': ['No property with that ID']}, status=400)
 
         property = properties[0]
-        serializer = self.serializer_class(property, data=request.data)
+        serializer = self.serializer_class(property, data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
 
         if property.agent != request.user:
@@ -144,6 +145,102 @@ class PropertyListView(ReadOnlyModelViewSet):
             agent=user_id
         ).order_by('-created_at')
 
+
+class PropertyListingViewset(ReadOnlyModelViewSet):
+
+    filter_backends = [SearchFilter]
+    serializer_class = PropertyListingSerializer
+    search_fields = ['name']
+    pagination_class = CustomPagination
+
+    def get_queryset(self):
+        queryset = Property.objects.filter(
+            moderation_status=MODERATION_STATUS_CHOICES[1][0]
+        )
+
+        country = self.request.query_params.get('country')
+        if country is not None:
+            queryset = queryset.filter(country__icontains=country)
+
+        state = self.request.query_params.get('state')
+        if state is not None:
+            queryset = queryset.filter(state__icontains=state)
+
+        completion_status = self.request.query_params.get('completion_status')
+        if completion_status is not None:
+            queryset = queryset.filter(completion_status__iexact=completion_status)
+
+        apartment_type = self.request.query_params.get('apartment_type')
+        if apartment_type is not None:
+            apartment_type_regex = "|".join( str(apartment_type).split(","))
+            queryset = queryset.filter(apartment_type__iregex=apartment_type_regex)
+
+        bedrooms = self.request.query_params.get('bedrooms')
+        if bedrooms is not None:
+            queryset = queryset.filter(number_of_bedrooms=bedrooms)
+
+        budget_range = self.request.query_params.get('budget_range')
+        if budget_range is not None:
+            queryset = queryset.filter(price_per_share__range=tuple(budget_range))
+
+        queryset.order_by('-created_at')
+        return queryset
+
+class PropertyTopdealsViewset(ReadOnlyModelViewSet):
+    serializer_class = PropertyTopdealsSerializer
+    pagination_class = CustomPagination
+
+    def get_queryset(self):
+        queryset = Property.objects.prefetch_related(
+            Prefetch('image_album')
+        ).filter(
+            moderation_status=MODERATION_STATUS_CHOICES[1][0],
+            promotion_closing_date__gte= timezone.now()
+        ).order_by('-percentage_discount')
+        return queryset
+
+
+class PropertyMarketplaceViewset(ReadOnlyModelViewSet):
+    filter_backends = [SearchFilter]
+    serializer_class = PropertyMarketplaceSerializer
+    search_fields = ['name']
+    pagination_class = CustomPagination
+
+    def get_queryset(self):
+        queryset = Property.objects.prefetch_related(
+            Prefetch('image_album')
+        )
+
+        country = self.request.query_params.get('country')
+        if country is not None:
+            queryset = queryset.filter(country__icontains=country)
+
+        state = self.request.query_params.get('state')
+        if state is not None:
+            queryset = queryset.filter(state__icontains=state)
+
+        completion_status = self.request.query_params.get('completion_status')
+        if completion_status is not None:
+            queryset = queryset.filter(completion_status__iexact=completion_status)
+
+        apartment_type = self.request.query_params.get('apartment_type')
+        if apartment_type is not None:
+            apartment_type_regex = "|".join(str(apartment_type).split(","))
+            queryset = queryset.filter(apartment_type__iregex=apartment_type_regex)
+
+        bedrooms = self.request.query_params.get('bedrooms')
+        if bedrooms is not None:
+            queryset = queryset.filter(number_of_bedrooms=bedrooms)
+
+        budget_range = self.request.query_params.get('budget_range')
+        if budget_range is not None:
+            queryset = queryset.filter(price_per_share__range=tuple(budget_range))
+
+        queryset.filter(
+            moderation_status=MODERATION_STATUS_CHOICES[1][0],
+            promotion_closing_date__gte= timezone.now()
+        ).order_by('-percentage_discount')
+        return queryset
 
 class SimilarPropertyView(views.APIView):
 

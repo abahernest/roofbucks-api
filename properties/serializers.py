@@ -305,6 +305,36 @@ class PropertyTableSerializer (serializers.ModelSerializer):
         fields = ['id', 'name', 'created_at',
                   'moderation_status', 'total_property_cost']
 
+class PropertyListingSerializer (serializers.ModelSerializer):
+
+    class Meta:
+        model = Property
+        fields = ['id', 'name', 'created_at', 'company_name', 'agent',
+                  'apartment_type', 'address', 'city', 'state', 'apartment_type',
+                  'country', 'percentage_discount', 'promotion_closing_date',
+                  'number_of_bedrooms', 'number_of_toilets', 'default_image', 'total_property_cost',
+                  'total_number_of_shares', 'price_per_share']
+
+class PropertyMarketplaceSerializer (serializers.ModelSerializer):
+
+    class Meta:
+        model = Property
+        fields = ['id', 'name', 'created_at', 'company_name', 'agent', 'description',
+                  'apartment_type', 'address', 'city', 'state', 'apartment_type',
+                  'country', 'percentage_discount', 'promotion_closing_date',
+                  'number_of_bedrooms', 'number_of_toilets', 'default_image', 'total_property_cost',
+                  'total_number_of_shares', 'price_per_share', 'image_album']
+
+class PropertyTopdealsSerializer (serializers.ModelSerializer):
+
+    image_album = MediaAlbumSerializer()
+    class Meta:
+        model = Property
+        fields = ['id', 'name', 'created_at', 'company_name', 'agent', 'description',
+                  'apartment_type', 'address', 'city', 'state', 'apartment_type',
+                  'country', 'percentage_discount', 'promotion_closing_date',
+                  'number_of_bedrooms', 'number_of_toilets', 'default_image', 'total_property_cost',
+                  'total_number_of_shares', 'price_per_share', 'image_album']
 class ShoppingCartPropertySerializer(serializers.ModelSerializer):
 
     class Meta:

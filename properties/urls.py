@@ -2,14 +2,20 @@ from django.urls import path
 from .views import (NewPropertyAPIView, StayPeriodAPIView,
                     PropertyListView, PropertyDetailView, 
                     UpdatePropertyAPIView, RemoveMediaView, SimilarPropertyView,
-                    ShoppingCartAPIView, CreateAndListSiteVisitAPIView,
-                    AcceptAndRejectInspectionAPIView,
+                    ShoppingCartAPIView, CreateAndListSiteVisitAPIView, PropertyTopdealsViewset,
+                    AcceptAndRejectInspectionAPIView, PropertyListingViewset,PropertyMarketplaceViewset,
                     CancelSiteVisitAPIView, AgentPropertyInspectionsAPIView
                     )
 
 urlpatterns = [
     path(
         '', PropertyListView.as_view({'get': 'list'}), name='all_properties'),
+    path(
+        'listings/', PropertyListingViewset.as_view({'get': 'list'}), name='property_listing'),
+    path(
+        'topdeals/', PropertyTopdealsViewset.as_view({'get': 'list'}), name='property_topdeals'),
+    path(
+        'marketplace/', PropertyMarketplaceViewset.as_view({'get': 'list'}), name='property_marketplace'),
     path('new/', NewPropertyAPIView.as_view(), name='new_property'),
     path('stay-periods/<property_id>/',
          StayPeriodAPIView.as_view(), name='add_stay_periods'),
