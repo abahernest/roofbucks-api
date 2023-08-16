@@ -317,12 +317,6 @@ class PropertyDetailView(views.APIView):
 
         property = properties[0]
 
-        if property.agent != request.user:
-            return Response({
-                'status_code': 400,
-                'error': 'This resource belongs to another user',
-                'payload': ['This resource belongs to another user']}, status=400)
-
         serializer = self.serializer_class(property)
 
 

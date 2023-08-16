@@ -26,7 +26,7 @@ urlpatterns = [
     path('media/<media_type>/<property_id>/<media_id>/',
          RemoveMediaView.as_view(), name='property_media'),
     path('similar_properties/<property_id>/',
-         SimilarPropertyView.as_view(), name='single_property'),
+         SimilarPropertyView.as_view(), name='similar_property'),
     path('shopping_cart/',
          ShoppingCartAPIView.as_view(), name='shopping_cart'),
     path('site_visit/',
