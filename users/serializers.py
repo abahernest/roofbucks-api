@@ -106,27 +106,40 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
 
         return instance
 
-class AccountSettingsSerializer(serializers.Serializer):
+class UpdateCompanySerializer(serializers.ModelSerializer):
 
-    display_name = serializers.CharField()
-    agency_display_name = serializers.CharField()
-    agency_website = serializers.URLField(required=False)
+    company_logo = serializers.ImageField(
+        max_length=256, allow_empty_file=False, required=False)
+    country = serializers.CharField(required=False)
+    city = serializers.CharField(required=False)
+    phone = serializers.CharField(required=False)
+    website = serializers.URLField(required=False)
+    description = serializers.CharField(required=False)
+
     class Meta:
-        fields = ['display_name', 'agency_display_name', 'agency_website']
+        model = Company
+        fields = ['company_logo', 'country', 'city', 'phone', 'website', 'description']
 
-    def update(self, instance, validated_data):
+    def validate(self, attrs):
+        phone = attrs.get('phone', '')
 
-        user = instance
+        if not str(phone).isdigit():
+            raise serializers.ValidationError("phone must contain only digits")
 
-        user.display_name = validated_data.get('display_name')
-        company = user.get_company()
-        company.display_name = validated_data.get('agency_display_name')
-        company.website = validated_data.get('agency_website')
+        return attrs
 
-        company.save()
-        user.save()
+    def update(self, instance: User, validated_data):
 
-        return validated_data
+        updatable_fields = {}
+
+        for key in validated_data:
+            updatable_fields[key] = validated_data.get(key)
+
+        Company.objects.filter(user_id=instance.id).update(**updatable_fields)
+        company_serializer = CompanySerializer(instance.get_company())
+
+        return company_serializer.data
+
 
 class CreateCompanySerializer(serializers.ModelSerializer):
 

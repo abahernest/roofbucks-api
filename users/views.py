@@ -13,7 +13,7 @@ from album.models import MediaFiles
 from properties.models import Property
 from .serializers import (UpdateProfileSerializer, CreateCompanySerializer,
                           AddBankInfoSerializer, BusinessProfileSerializer,
-                          AgentListSerializer, ReviewsSerializer, AccountSettingsSerializer)
+                          AgentListSerializer, ReviewsSerializer, UpdateCompanySerializer)
 from utils.pagination import CustomPagination
 from utils.constants import (NUMBER_OF_REVIEWS_TO_DISPLAY)
 from authentication.permissions import IsCustomer, IsAgent
@@ -61,8 +61,9 @@ class Profile(views.APIView):
         return Response(serializer.data, status=200)
 
 
-class AccountSettingsView(views.APIView):
-    serializer_class = AccountSettingsSerializer
+class UpdateCompanyView(views.APIView):
+    serializer_class = UpdateCompanySerializer
+    parser_classes = [parsers.FormParser, parsers.MultiPartParser]
     permission_classes = [permissions.IsAuthenticated, IsAgent]
 
     def patch(self, request):
@@ -70,10 +71,9 @@ class AccountSettingsView(views.APIView):
         serializer = self.serializer_class(instance=request.user, data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        with transaction.atomic():
-            serializer.save()
+        company = serializer.save()
 
-            return Response(serializer.data, status=200)
+        return Response(company, status=200)
 
     def get(self, request):
 
@@ -81,9 +81,11 @@ class AccountSettingsView(views.APIView):
         company = user.get_company()
 
         account_settings = {
-            'display_name': user.display_name,
-            'agency_display_name': company.display_name,
-            'agency_website': company.website
+            'country': company.country,
+            'city': company.city,
+            'phone': company.phone,
+            'description': company.description,
+            'website': company.website
         }
 
         return Response(account_settings, status=200)
