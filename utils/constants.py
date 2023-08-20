@@ -8,4 +8,8 @@ STAGES_OF_PROFILE_COMPLETION = {
         'business': False,
         'billing': False
     }
+STAGES_OF_KYC_VERIFICATION = {
+        'profile': False,
+        'business': False,
+    }
 ALLOWABLE_DOCUMENT_TYPES = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'application/octet-stream']

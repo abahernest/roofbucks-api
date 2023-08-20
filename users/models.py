@@ -5,7 +5,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.validators import MinLengthValidator
 
 from album.models import MediaAlbum, MediaFiles
-from utils.constants import STAGES_OF_PROFILE_COMPLETION
+from utils.constants import STAGES_OF_PROFILE_COMPLETION, STAGES_OF_KYC_VERIFICATION
 
 class UserManager(BaseUserManager):
 
@@ -48,6 +48,8 @@ IDENTITY_DOCUMENT_CHOICES = [
 def stagesOfProfileCompletion():
     return STAGES_OF_PROFILE_COMPLETION
 
+def stagesOfKycVerification():
+    return STAGES_OF_KYC_VERIFICATION
 class User(AbstractBaseUser, PermissionsMixin):
     phone                       = models.CharField(max_length=255, unique=True, null=True, blank=True)
     firstname                   = models.CharField(max_length=255)
@@ -84,6 +86,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     display_photo               = models.ImageField(upload_to='display_photo/')
     proof_of_address_document   = models.FileField(upload_to='proof_of_address/')
     stages_of_profile_completion = models.JSONField(default=stagesOfProfileCompletion)
+    stages_of_kyc_verification = models.JSONField(default=stagesOfKycVerification)
     created_at                  = models.DateTimeField(auto_now_add=True)
     updated_at                  = models.DateTimeField(auto_now=True)
 

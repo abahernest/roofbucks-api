@@ -26,6 +26,7 @@ urlpatterns = [
     path('api/v1/properties/', include('properties.urls')),
     path('api/v1/transactions/', include('transactions.urls')),
     path('api/v1/notifications/', include('notifications.urls')),
+    path('api/v1/admin/', include('admin.urls')),
 ]
 
 urlpatterns += static(settings.STATIC_URL,

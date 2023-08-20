@@ -207,7 +207,12 @@ class AgentListView(ReadOnlyModelViewSet):
     def get_queryset(self):
         return User.objects.filter(
             role='AGENT',
-            is_verified=True
+            is_verified=True,
+            stages_of_profile_completion__profile=True,
+            stages_of_profile_completion__business=True,
+            stages_of_profile_completion__billing=True,
+            stages_of_kyc_verification__profile=True,
+            stages_of_kyc_verification__business=True
         ).order_by('-created_at')
 
 

@@ -58,7 +58,8 @@ INSTALLED_APPS = [
     'users',
     'properties',
     'transactions',
-    'notifications'
+    'notifications',
+    # "admin" no need to add "admin" app since "django.contrib.admin" has been added
 ]
 
 MIDDLEWARE = [
