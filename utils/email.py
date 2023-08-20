@@ -31,9 +31,13 @@ class SendMail:
 
     @staticmethod
     def send_email_verification_mail(data):
-        message = f'Hello {data["firstname"]},\nYour securely generated token is avalable below.\n\n{data["token"]}'
+        frontend_url = os.environ.get("FRONTEND_URL", "")
+        email_verification_url = f'{frontend_url}?verification=true&email={data["to_email"]}&otp={data["token"]}'
+        message = f'Hello {data["firstname"]},\nYour securely generated token is available below.' \
+                  f'\n\n{data["token"]}' \
+                  f'\n{email_verification_url}'
         data['email_body'] = message
-        data['email_subject']= 'Verify Your Email'
+        data['email_subject'] = 'Verify Your Email'
         SendMail.send_email(data)
 
     @staticmethod

@@ -143,7 +143,8 @@ class PasswordTokenCheckAPI(generics.GenericAPIView):
 
     def get(self, request, uid64, token):
         try:
-            redirect_url = os.environ.get('PASSWORD_RESET_REDIRECT_URL', '')
+            frontend_url = os.environ.get('FRONTEND_URL', '')
+            redirect_url = f'{frontend_url}?reset=true'
             user_id = smart_str(urlsafe_base64_decode(uid64))
             user = User.objects.get(id=user_id)
 
