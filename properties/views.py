@@ -10,9 +10,10 @@ from django.utils import timezone
 from .serializers import (NewPropertySerializer, StayPeriodSerializer, PropertyInspectionQuerySerializer,
                           PropertySerializer, ShoppingCartSerializer, PropertyTableSerializer, PropertyMarketplaceSerializer,
                           SimilarPropertyListSerializer, RemoveShopingCartItemSerializer, PropertyListingSerializer,
-                          ScheduleSiteInspectionSerializer, PropertyInspectionSerializer, PropertyTopdealsSerializer,)
+                          ScheduleSiteInspectionSerializer, PropertyInspectionSerializer, PropertyTopdealsSerializer,
+                          PropertyOwnershipSerializer, CreatePropertyOwnershipSerializer, CreateMarkeplaceBuyOrderSerializer)
 from authentication.permissions import IsAgent, IsCustomer
-from .models import Property, ShoppingCart, PropertyInspection, MODERATION_STATUS_CHOICES
+from .models import Property, ShoppingCart, PropertyInspection, MODERATION_STATUS_CHOICES, PROPERTY_STAGE_CHOICES
 from album.models import MediaFiles
 from users.models import Company
 from notifications.models import Notifications
@@ -155,7 +156,8 @@ class PropertyListingViewset(ReadOnlyModelViewSet):
 
     def get_queryset(self):
         queryset = Property.objects.filter(
-            moderation_status=MODERATION_STATUS_CHOICES[1][0]
+            moderation_status=MODERATION_STATUS_CHOICES[1][0],
+            stage=PROPERTY_STAGE_CHOICES[0][0]
         )
 
         country = self.request.query_params.get('country')
@@ -183,7 +185,7 @@ class PropertyListingViewset(ReadOnlyModelViewSet):
         if budget_range is not None:
             queryset = queryset.filter(price_per_share__range=tuple(budget_range))
 
-        queryset.order_by('-created_at')
+        queryset = queryset.order_by('-created_at')
         return queryset
 
 class PropertyTopdealsViewset(ReadOnlyModelViewSet):
@@ -209,6 +211,9 @@ class PropertyMarketplaceViewset(ReadOnlyModelViewSet):
     def get_queryset(self):
         queryset = Property.objects.prefetch_related(
             Prefetch('image_album')
+        ).filter(
+            moderation_status=MODERATION_STATUS_CHOICES[1][0],
+            stage=PROPERTY_STAGE_CHOICES[1][0]
         )
 
         country = self.request.query_params.get('country')
@@ -236,10 +241,7 @@ class PropertyMarketplaceViewset(ReadOnlyModelViewSet):
         if budget_range is not None:
             queryset = queryset.filter(price_per_share__range=tuple(budget_range))
 
-        queryset.filter(
-            moderation_status=MODERATION_STATUS_CHOICES[1][0],
-            promotion_closing_date__gte= timezone.now()
-        ).order_by('-percentage_discount')
+        queryset = queryset.order_by('-created_at')
         return queryset
 
 class SimilarPropertyView(views.APIView):
@@ -604,6 +606,30 @@ class CreateAndListSiteVisitAPIView (views.APIView):
         return Response(serializer.data, status = 200)
 
 
+class CreatePropertyOwnershipAPIView(views.APIView):
+    serializer_class = CreatePropertyOwnershipSerializer
+    permission_classes = [permissions.IsAuthenticated, IsCustomer]
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        serializer.save(user=request.user)
+
+        return Response({"message":"success"}, status=200)
+
+
+class CreateMarketplaceBuyOrderAPIView(views.APIView):
+    serializer_class = CreateMarkeplaceBuyOrderSerializer
+    permission_classes = [permissions.IsAuthenticated, IsCustomer]
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        serializer.save(user=request.user)
+
+        return Response({"message":"success"}, status=200)
 
 class CancelSiteVisitAPIView (views.APIView):
 

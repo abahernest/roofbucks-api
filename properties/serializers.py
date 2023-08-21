@@ -3,7 +3,10 @@ from rest_framework import serializers
 from rest_framework.exceptions import ParseError
 
 
-from .models import Property, ShoppingCart, PropertyInspection, CHOICES_FOR_INSPECTION_STATUS
+from .models import (Property, ShoppingCart, PROPERTY_STAGE_CHOICES,
+                     PropertyInspection, CHOICES_FOR_INSPECTION_STATUS,
+                     PropertyOwnership, CHOICES_FOR_PROPERTY_OWNERSHIP_STATUS,
+                     CHOICES_FOR_PROPERTY_OWNER_TYPE)
 from album.models import MediaFiles, MediaAlbum
 from album.serializers import MediaAlbumSerializer, MediaFilesSerializer
 from utils.constants import (
@@ -324,7 +327,7 @@ class PropertyMarketplaceSerializer (serializers.ModelSerializer):
                   'apartment_type', 'address', 'city', 'state', 'apartment_type',
                   'country', 'percentage_discount', 'promotion_closing_date',
                   'number_of_bedrooms', 'number_of_toilets', 'default_image', 'total_property_cost',
-                  'total_number_of_shares', 'price_per_share', 'image_album']
+                  'total_number_of_shares', 'price_per_share', 'image_album', 'percentage_sold']
 
 class PropertyTopdealsSerializer (serializers.ModelSerializer):
 
@@ -371,11 +374,79 @@ class ScheduleSiteInspectionSerializer(serializers.Serializer):
 
         return attrs
 
+
+class CreatePropertyOwnershipSerializer(serializers.ModelSerializer):
+
+    property_id = serializers.UUIDField(required=True)
+    current_location = serializers.CharField(required=True)
+    social_link = serializers.URLField(required=True)
+    reason_for_purchase = serializers.CharField(required=True)
+    percentage_ownership = serializers.IntegerField(required=True)
+    price = serializers.FloatField(required=True)
+    intent_for_full_ownership = serializers.BooleanField(required=True)
+
+    class Meta:
+        model = PropertyOwnership
+        fields = ['property_id', 'current_location', 'social_link', 'reason_for_purchase',
+                  'percentage_ownership', 'price', 'intent_for_full_ownership', 'status']
+
+    def create(self, validated_data) -> PropertyOwnership:
+        return PropertyOwnership.objects.create(
+            **validated_data,
+            user_type=CHOICES_FOR_PROPERTY_OWNER_TYPE[0][0]
+        )
+
+class CreateMarkeplaceBuyOrderSerializer(serializers.ModelSerializer):
+
+    property_id = serializers.UUIDField(required=True)
+    current_location = serializers.CharField(required=True)
+    social_link = serializers.URLField(required=True)
+    investment_timeline = serializers.CharField(required=True)
+    investment_focus = serializers.CharField(required=True)
+    expected_ROI = serializers.FloatField(required=True)
+    investor_type = serializers.CharField(required=True)
+
+    class Meta:
+        model = PropertyOwnership
+        fields = ['property_id', 'current_location', 'social_link', 'investment_timeline',
+                  'investment_focus', 'expected_ROI', 'status', 'investor_type']
+
+    def create(self, validated_data) -> PropertyOwnership:
+        property_id = validated_data.get('property_id')
+        properties = Property.objects.filter(id=property_id)
+        if len(properties) <= 0:
+            raise ParseError('Property not found')
+
+        property_ownership = PropertyOwnership.objects.filter(property_id=property_id,
+                                                              status=CHOICES_FOR_PROPERTY_OWNERSHIP_STATUS[2][0],
+                                                              user_type=CHOICES_FOR_PROPERTY_OWNER_TYPE[0][0])
+        if len(property_ownership) <= 0:
+            raise ParseError(
+                'PropertyOwnership for homebuyer not found')
+
+        percentage_ownership = 100-property_ownership[0].percentage_ownership
+        price = (percentage_ownership * properties[0].total_property_cost)/100
+        return PropertyOwnership.objects.create(
+            **validated_data,
+            percentage_ownership=percentage_ownership,
+            price=price,
+            user_type=CHOICES_FOR_PROPERTY_OWNER_TYPE[1][0]
+        )
+
+
 class PropertyInspectionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PropertyInspection
         fields = '__all__'
+
+
+class PropertyOwnershipSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = PropertyOwnership
+        fields = '__all__'
+
 
 class PropertyInspectionQuerySerializer(serializers.Serializer):
 

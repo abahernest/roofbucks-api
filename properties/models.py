@@ -15,7 +15,11 @@ COMPLETION_STATUS_CHOICES = [
     ('IN-PROGRESS', 'construction in progress'),
     ('COMPLETED', 'contruction completed'),
 ]
-
+PROPERTY_STAGE_CHOICES = [
+    ('LISTING', 'Property is in listing page'),
+    ('MARKETPLACE', 'Property is in marketplace page'),
+    ('SOLD', 'Property has been sold off')
+]
 
 def get_default_image_upload_path(instance, filename):
     name = "properties"
@@ -33,6 +37,10 @@ class Property(models.Model):
         choices=MODERATION_STATUS_CHOICES,
         max_length=255, 
         default=MODERATION_STATUS_CHOICES[0][0] )
+    stage = models.CharField(
+        choices=PROPERTY_STAGE_CHOICES,
+        max_length=255,
+        default=PROPERTY_STAGE_CHOICES[0][0] )
     archived  = models.BooleanField(default=False)
     completion_status = models.CharField(
         max_length=255,
@@ -72,6 +80,7 @@ class Property(models.Model):
     zip_code = models.PositiveIntegerField(null=True)
     total_number_of_shares = models.PositiveIntegerField(null=True)
     total_property_cost = models.PositiveBigIntegerField(null=True)
+    percentage_sold = models.PositiveIntegerField(default=0)
     expected_ROI    = models.FloatField(null=True)
     area_rent_rolls = models.CharField(max_length=255, blank=True)
     scheduled_stays = ArrayField(
@@ -149,3 +158,41 @@ class PropertyInspection(models.Model):
 
     class Meta:
         db_table = 'PropertyInspections'
+
+
+CHOICES_FOR_PROPERTY_OWNERSHIP_STATUS =[
+    ('PENDING', 'Admin Is yet to review request'),
+    ('REJECTED', 'Admin has rejected ownership request'),
+    ('ACCEPTED', 'Admin has accepted ownership request')
+]
+CHOICES_FOR_PROPERTY_OWNER_TYPE =[
+    ('HOME_OWNER', 'Property Owner/First buyer/Highest shareholder'),
+    ('INVESTOR', 'Property Investor'),
+]
+
+class PropertyOwnership(models.Model):
+    property = models.ForeignKey(Property, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user')
+    current_location = models.CharField(max_length=256, default='')
+    social_link = models.URLField()
+    reason_for_purchase = models.CharField(max_length=256, default='')
+    investment_timeline = models.CharField(max_length=256, default='')
+    investment_focus = models.CharField(max_length=256, default='')
+    expected_ROI = models.FloatField(default=0)
+    investor_type = models.CharField(max_length=256, default='')
+    percentage_ownership = models.IntegerField()
+    price = models.FloatField(default=0)
+    intent_for_full_ownership = models.BooleanField(default=False)
+    status = models.CharField(
+        max_length=256,
+        choices=CHOICES_FOR_PROPERTY_OWNERSHIP_STATUS,
+        default=CHOICES_FOR_PROPERTY_OWNERSHIP_STATUS[0][0])
+    user_type = models.CharField(
+        max_length=256,
+        choices=CHOICES_FOR_PROPERTY_OWNER_TYPE,
+        default=CHOICES_FOR_PROPERTY_OWNER_TYPE[0][0])
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'PropertyOwnerships'

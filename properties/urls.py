@@ -4,7 +4,8 @@ from .views import (NewPropertyAPIView, StayPeriodAPIView,
                     UpdatePropertyAPIView, RemoveMediaView, SimilarPropertyView,
                     ShoppingCartAPIView, CreateAndListSiteVisitAPIView, PropertyTopdealsViewset,
                     AcceptAndRejectInspectionAPIView, PropertyListingViewset,PropertyMarketplaceViewset,
-                    CancelSiteVisitAPIView, AgentPropertyInspectionsAPIView
+                    CancelSiteVisitAPIView, AgentPropertyInspectionsAPIView, CreatePropertyOwnershipAPIView,
+                    CreateMarketplaceBuyOrderAPIView
                     )
 
 urlpatterns = [
@@ -36,5 +37,9 @@ urlpatterns = [
     path('agent_site_visit/<visitation_id>/<agent_action>/',
          AcceptAndRejectInspectionAPIView.as_view(), name='accept_and_reject_inspection'),
     path('site_visit/<visitation_id>/cancel/',
-         CancelSiteVisitAPIView.as_view(), name='cancel_site_inspection')
+         CancelSiteVisitAPIView.as_view(), name='cancel_site_inspection'),
+    path('ownership_request/',
+         CreatePropertyOwnershipAPIView.as_view(), name='create_property_ownership_request'),
+    path('marketplace_buy_order/',
+         CreateMarketplaceBuyOrderAPIView.as_view(), name='create_marketplace_buy_order')
 ]
